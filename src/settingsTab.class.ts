@@ -38,5 +38,18 @@ export class SampleSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
+		new Setting(containerEl)
+			.setName("External Link Field")
+			.setDesc("Field name for external link in the note")
+			.addText((text) =>
+				text
+					.setPlaceholder("e.g. https://t.me/kallection/25972")
+					.setValue(this.plugin.settings.externalLinkField)
+					.onChange(async (value) => {
+						this.plugin.settings.externalLinkField = value;
+						await this.plugin.saveSettings();
+					})
+			);
 	}
 }

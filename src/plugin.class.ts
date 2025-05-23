@@ -67,7 +67,7 @@ export default class MyPlugin extends Plugin {
 			"dice",
 			"Send to Telegram",
 			async () => {
-				const { chatId } = this.settings;
+				const { chatId, externalLinkField } = this.settings;
 				if (!chatId) {
 					new Notice("Please set the chat ID in the settings.");
 					return;
@@ -82,7 +82,11 @@ export default class MyPlugin extends Plugin {
 				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
 
 				if (page) {
-					const converted = covertToMarkdownV2(page);
+					const converted = covertToMarkdownV2(
+						page,
+						externalLinkField,
+						this.app
+					);
 					await this.sendToTelegram(converted);
 				}
 			}
@@ -94,10 +98,15 @@ export default class MyPlugin extends Plugin {
 			id: "send-selected-text",
 			name: "Send selected text to Telegram",
 			editorCallback: async (editor: Editor) => {
+				const { externalLinkField } = this.settings;
 				const selectedText = editor.getSelection();
 				if (!selectedText) return;
 
-				const converted = covertToMarkdownV2(selectedText);
+				const converted = covertToMarkdownV2(
+					selectedText,
+					externalLinkField,
+					this.app
+				);
 				await this.sendToTelegram(converted);
 			},
 		});
@@ -106,11 +115,16 @@ export default class MyPlugin extends Plugin {
 			id: "send-page-without-properties",
 			name: "Send page to Telegram (without properties)",
 			editorCallback: async (editor: Editor) => {
+				const { externalLinkField } = this.settings;
 				let page = editor.getValue();
 				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
 
 				if (page) {
-					const converted = covertToMarkdownV2(page);
+					const converted = covertToMarkdownV2(
+						page,
+						externalLinkField,
+						this.app
+					);
 					await this.sendToTelegram(converted);
 				}
 			},
@@ -120,10 +134,15 @@ export default class MyPlugin extends Plugin {
 			id: "send-full-page",
 			name: "Send page to Telegram",
 			editorCallback: async (editor: Editor) => {
+				const { externalLinkField } = this.settings;
 				const page = editor.getValue();
 
 				if (page) {
-					const converted = covertToMarkdownV2(page);
+					const converted = covertToMarkdownV2(
+						page,
+						externalLinkField,
+						this.app
+					);
 					await this.sendToTelegram(converted);
 				}
 			},
