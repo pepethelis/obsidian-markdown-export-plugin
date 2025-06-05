@@ -31,7 +31,13 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async sendToTelegram(message: string) {
-		const { botToken, chatId } = this.settings;
+		const { botToken, chatId, externalLinkField } = this.settings;
+
+		const converted = covertToMarkdownV2(
+			message,
+			externalLinkField,
+			this.app
+		);
 
 		if (!botToken || !chatId) {
 			new Notice("Please set bot token and chat ID in settings.");
@@ -45,7 +51,7 @@ export default class MyPlugin extends Plugin {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					chat_id: chatId,
-					text: message,
+					text: converted,
 					parse_mode: "MarkdownV2",
 				}),
 			}
@@ -82,12 +88,7 @@ export default class MyPlugin extends Plugin {
 				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
 
 				if (page) {
-					const converted = covertToMarkdownV2(
-						page,
-						externalLinkField,
-						this.app
-					);
-					await this.sendToTelegram(converted);
+					await this.sendToTelegram(page);
 				}
 			}
 		);
@@ -98,16 +99,10 @@ export default class MyPlugin extends Plugin {
 			id: "send-selected-text",
 			name: "Send selected text to Telegram",
 			editorCallback: async (editor: Editor) => {
-				const { externalLinkField } = this.settings;
 				const selectedText = editor.getSelection();
 				if (!selectedText) return;
 
-				const converted = covertToMarkdownV2(
-					selectedText,
-					externalLinkField,
-					this.app
-				);
-				await this.sendToTelegram(converted);
+				await this.sendToTelegram(selectedText);
 			},
 		});
 
@@ -115,17 +110,11 @@ export default class MyPlugin extends Plugin {
 			id: "send-page-without-properties",
 			name: "Send page to Telegram (without properties)",
 			editorCallback: async (editor: Editor) => {
-				const { externalLinkField } = this.settings;
 				let page = editor.getValue();
 				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
 
 				if (page) {
-					const converted = covertToMarkdownV2(
-						page,
-						externalLinkField,
-						this.app
-					);
-					await this.sendToTelegram(converted);
+					await this.sendToTelegram(page);
 				}
 			},
 		});
