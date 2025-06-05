@@ -44,7 +44,7 @@ export class SampleSettingTab extends PluginSettingTab {
 			.setDesc("Field name for external link in the note")
 			.addText((text) =>
 				text
-					.setPlaceholder("e.g. https://t.me/kallection/25972")
+					.setPlaceholder("e.g. 'post' or 'externalLink'")
 					.setValue(this.plugin.settings.externalLinkField)
 					.onChange(async (value) => {
 						this.plugin.settings.externalLinkField = value;
