@@ -1,4 +1,4 @@
-import { convertToMarkdownV2 } from "helpers/mdConverter";
+import { convertToMarkdownV2 } from "helpers/mdV2Converter";
 import { Editor, MarkdownView, Notice, Plugin } from "obsidian";
 import { MyPluginSettings } from "./types";
 import { SampleSettingTab } from "./settingsTab.class";
@@ -100,7 +100,10 @@ export default class MyPlugin extends Plugin {
 			name: "Send selected text to Telegram",
 			editorCallback: async (editor: Editor) => {
 				const selectedText = editor.getSelection();
-				if (!selectedText) return;
+				if (!selectedText) {
+					new Notice("Please select some text to send.");
+					return;
+				}
 
 				await this.sendToTelegram(selectedText);
 			},
@@ -109,19 +112,6 @@ export default class MyPlugin extends Plugin {
 		this.addCommand({
 			id: "send-page-without-properties",
 			name: "Send page to Telegram",
-			editorCallback: async (editor: Editor) => {
-				let page = editor.getValue();
-				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
-
-				if (page) {
-					await this.sendToTelegram(page);
-				}
-			},
-		});
-
-		this.addCommand({
-			id: "send-page-without-old",
-			name: "Send page to Telegram (old)",
 			editorCallback: async (editor: Editor) => {
 				let page = editor.getValue();
 				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
@@ -150,7 +140,7 @@ export default class MyPlugin extends Plugin {
 						headers: { "Content-Type": "application/json" },
 						body: JSON.stringify({
 							chat_id: chatId,
-							text: "*bold*\n_italic_\n__underline__\n~strikethrough~\n[link](https://example.com)",
+							text: "*bold*\n_italic_\n__underline__\n~strikethrough~\n[link](https://example.com)\n||spoiler||",
 							parse_mode: "MarkdownV2",
 						}),
 					}
@@ -162,24 +152,6 @@ export default class MyPlugin extends Plugin {
 					const errorText = await response.text();
 					console.error("Telegram API error:", errorText);
 					new Notice("Failed to send message ❌");
-				}
-			},
-		});
-
-		this.addCommand({
-			id: "send-page-with-properties",
-			name: "Send page to Telegram (with properties)",
-			editorCallback: async (editor: Editor) => {
-				const { externalLinkField } = this.settings;
-				const page = editor.getValue();
-
-				if (page) {
-					const converted = convertToMarkdownV2(
-						page,
-						externalLinkField,
-						this.app
-					);
-					await this.sendToTelegram(converted);
 				}
 			},
 		});
