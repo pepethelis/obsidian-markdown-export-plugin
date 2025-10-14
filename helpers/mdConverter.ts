@@ -1,28 +1,29 @@
 import { App } from "obsidian";
 
-// Helper function to escape MarkdownV2 special characters
-export const covertToMarkdownV2 = (
-	text: string,
-	wikilinkExternalLinkField: string,
-	app: App
-) => {
-	let content = text;
-	const linkMap = new Map<string, string>();
-	let linkCounter = 0;
-
-	// Step 0: Convert wikilinks to Markdown links.
+const convertWikilinks = (
+	input: string,
+	app: App,
+	wikilinkExternalLinkField: string
+): string => {
 	const linkRegex = /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g;
-	content = content.replace(
+	const result = input.replace(
 		linkRegex,
 		(_fullMatch, linkTargetRaw, displayOverrideRaw) => {
 			const linkTarget = linkTargetRaw.trim();
-			let displayText = linkTarget;
+			let displayText = linkTarget
+				.replace(/&/g, "&amp;")
+				.replace(/</g, "&lt;")
+				.replace(/>/g, "&gt;");
 
 			if (
 				displayOverrideRaw !== undefined &&
 				displayOverrideRaw.trim() !== ""
 			) {
-				displayText = displayOverrideRaw.trim();
+				displayText = displayOverrideRaw
+					.trim()
+					.replace(/&/g, "&amp;")
+					.replace(/</g, "&lt;")
+					.replace(/>/g, "&gt;");
 			}
 
 			// Extract path and optional section (#heading or ^blockid)
@@ -47,8 +48,8 @@ export const covertToMarkdownV2 = (
 			) {
 				const url = frontmatter[wikilinkExternalLinkField].trim();
 				return `[${displayText}](${url})`;
-			} else if (!frontmatter || frontmatter.status !== "Done") {
-				// Not done or no frontmatter
+			} else if (!frontmatter || frontmatter.status !== "Published") {
+				// Not published or no frontmatter
 				return `${displayText}⏳`;
 			} else {
 				return `${displayText}⚠️🔗`;
@@ -56,79 +57,113 @@ export const covertToMarkdownV2 = (
 		}
 	);
 
-	// Step 1: Tokenize links
-	content = content.replace(
-		/\[([\s\S]*?)\]\((.*?)\)/g,
-		(match, linkText, url) => {
-			const token = `__LINK_TOKEN_${linkCounter++}__`;
-			const safeUrl = url
-				.replace(/(?<!%)\(/g, "%28")
-				.replace(/(?<!%)\)/g, "%29");
-			linkMap.set(token, `[${linkText}](${safeUrl})`);
-			return token;
+	return result;
+};
+
+const tokenizeBold = (input: string): string => {
+	return input.replace(/(\*\*|__)(?=\S)(.+?[*_]*)(?<=\S)\1/g, "<b>$2</b>");
+};
+
+const tokenizeStrikethrough = (input: string): string => {
+	return input.replace(/~~(?=\S)([^\n]*?\S)~~/g, "<s>$1</s>");
+};
+
+const tokenizeItalics = (input: string): string => {
+	return input.replace(/(\*|_)(?=\S)(.+?)(?<=\S)\1/g, "<i>$2</i>");
+};
+
+const tokenizeUnderline = (input: string): string => {
+	return input;
+};
+
+const tokenizeLinks = (input: string): string => {
+	return input.replace(
+		/\[([^\]]+)\]\((https?:\/\/[^\s)]+)(?:\s+"([^"]+)")?\)/g,
+		(_, text, url, title) => {
+			if (!/^https?:\/\/[^\s)]+$/i.test(url)) return text;
+
+			const safeText = text
+				.replace(/&/g, "&amp;")
+				.replace(/</g, "&lt;")
+				.replace(/>/g, "&gt;");
+			const safeUrl = url.replace(/"/g, "&quot;");
+			const safeTitle = title
+				? ` title="${title.replace(/"/g, "&quot;")}"`
+				: "";
+
+			return `<a href="${safeUrl}"${safeTitle}>${safeText}</a>`;
+		}
+	);
+};
+
+const tokenizeMethods = [
+	convertWikilinks,
+	tokenizeLinks,
+	tokenizeBold,
+	tokenizeStrikethrough,
+	tokenizeItalics,
+	tokenizeUnderline,
+];
+
+const escapeMarkdownV2 = (text: string): string =>
+	text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
+
+const detokenizeBold = (input: string): string =>
+	input.replace(/<b>(.*?)<\/b>/g, (_, inner) => `*${inner}*`);
+
+const detokenizeItalics = (input: string): string =>
+	input.replace(/<i>(.*?)<\/i>/g, (_, inner) => `_${inner}_`);
+
+const detokenizeStrikethrough = (input: string): string =>
+	input.replace(/<s>(.*?)<\/s>/g, (_, inner) => `~${inner}~`);
+
+const detokenizeUnderline = (input: string): string =>
+	input.replace(/<u>(.*?)<\/u>/g, (_, inner) => `__${inner}__`);
+
+const detokenizeLinks = (input: string): string =>
+	input.replace(
+		/<a href="(https?:\/\/[^"]+)"(?: title="([^"]*)")?>(.*?)<\/a>/g,
+		(_, url, title, text) => {
+			// Escape only parentheses in URL
+			const safeUrl = url.replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+			return `[${text}](${safeUrl})`;
 		}
 	);
 
-	// Utility to escape all MarkdownV2 special characters for text content
-	const escapeText = (str: string): string =>
-		str.replace(/([_*\[\]()~`>#+\-=|{}.!\\<>])/g, "\\$&");
+const parenthesesEscape = (input: string): string => {
+	return input.replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+};
 
-	// Step 2: Formatting conversions
+const plusEscape = (input: string): string => {
+	return input.replace(/(?<!\\)\+/g, "\\+");
+}
 
-	// Strikethrough
-	content = content.replace(
-		/(?<![a-zA-Z0-9~])~~(?!~)([\s\S]+?)(?<!~)~~(?![a-zA-Z0-9~])/g,
-		(_, innerText) => `~${escapeText(innerText)}~`
+const detokenizeMethods = [
+	parenthesesEscape,
+	detokenizeLinks,
+	detokenizeItalics,
+	detokenizeBold,
+	detokenizeStrikethrough,
+	detokenizeUnderline,
+	plusEscape
+];
+
+export const convertToMarkdownV2 = (
+	content: string,
+	wikilinkExternalLinkField: string,
+	app: App
+) => {
+	const tokenizedContent = tokenizeMethods.reduce(
+		(text, method) => method(text, app, wikilinkExternalLinkField),
+		content
 	);
 
-	// Bold Italic
-	content = content.replace(
-		/(?<![\w*_~])\*\*\*(?!\*)([^\n\r*]+?)(?<!\*)\*\*\*(?![\w*_~])|(?<![\w*_~])___(?!_)([^\n\r_]+?)(?<!_)___(?![\w*_~])/g,
-		(match, g1, g2) => {
-			const text = g1 || g2;
-			return `*_${escapeText(text)}_ *`;
-		}
+	const result = detokenizeMethods.reduce(
+		(text, method) => method(text),
+		tokenizedContent
 	);
 
-	// Italic
-	content = content.replace(
-		/(?<![\w*_~])\*(?!\*)([^\n\r*]+?)(?<!\*)\*(?![\w*_~])|(?<![\w*_~])_(?!_)([^\n\r_]+?)(?<!_)_(?![\w*_~])/g,
-		(match, g1, g2) => `_${escapeText(g1 || g2)}_`
-	);
+	console.log("Converted MarkdownV2:", {tokenizedContent, result});
 
-	// Bold
-	content = content.replace(
-		/(?<![\w*_~])\*\*(?!\*)([^\n\r*]+?)(?<!\*)\*\*(?![\w*_~])|(?<![\w*_~])__(?!_)([^\n\r_]+?)(?<!_)__(?![\w*_~])/g,
-		(match, g1, g2) => `*${escapeText(g1 || g2)}*`
-	);
-
-	// Final escape pass
-	const finalEscape = (str: string): string =>
-		str
-			.replace(/(?<!\\)\./g, "\\.")
-			.replace(/(?<!\\)\+/g, "\\+")
-			.replace(/(?<!\\)\-/g, "\\-")
-			.replace(/(?<!\\)\=/g, "\\=")
-			.replace(/(?<!\\)\!/g, "\\!")
-			.replace(/(?<!\\)\(/g, "\\(")
-			.replace(/(?<!\\)\)/g, "\\)")
-			.replace(/(?<!\\)[{}|#]/g, (match) => "\\" + match);
-
-	content = finalEscape(content);
-
-	// Step 3: Restore tokenized links with proper escaping
-	for (const [token, original] of linkMap.entries()) {
-		content = content.replace(token, () => {
-			return original.replace(
-				/\[([\s\S]*?)\]\((.*?)\)/,
-				(_, linkText, url) => {
-					return `[${escapeText(linkText)}](${url})`;
-				}
-			);
-		});
-	}
-
-	
-
-	return content;
+	return result;
 };

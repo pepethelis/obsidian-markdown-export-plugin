@@ -1,4 +1,4 @@
-import { covertToMarkdownV2 } from "helpers/mdConverter";
+import { convertToMarkdownV2 } from "helpers/mdConverter";
 import { Editor, MarkdownView, Notice, Plugin } from "obsidian";
 import { MyPluginSettings } from "./types";
 import { SampleSettingTab } from "./settingsTab.class";
@@ -33,7 +33,7 @@ export default class MyPlugin extends Plugin {
 	async sendToTelegram(message: string) {
 		const { botToken, chatId, externalLinkField } = this.settings;
 
-		const converted = covertToMarkdownV2(
+		const converted = convertToMarkdownV2(
 			message,
 			externalLinkField,
 			this.app
@@ -73,7 +73,7 @@ export default class MyPlugin extends Plugin {
 			"dice",
 			"Send to Telegram",
 			async () => {
-				const { chatId, externalLinkField } = this.settings;
+				const { chatId } = this.settings;
 				if (!chatId) {
 					new Notice("Please set the chat ID in the settings.");
 					return;
@@ -108,7 +108,7 @@ export default class MyPlugin extends Plugin {
 
 		this.addCommand({
 			id: "send-page-without-properties",
-			name: "Send page to Telegram (without properties)",
+			name: "Send page to Telegram",
 			editorCallback: async (editor: Editor) => {
 				let page = editor.getValue();
 				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
@@ -120,14 +120,61 @@ export default class MyPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: "send-full-page",
-			name: "Send page to Telegram",
+			id: "send-page-without-old",
+			name: "Send page to Telegram (old)",
+			editorCallback: async (editor: Editor) => {
+				let page = editor.getValue();
+				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
+
+				if (page) {
+					await this.sendToTelegram(page);
+				}
+			},
+		});
+
+		this.addCommand({
+			id: "send-test-data",
+			name: "Send test data to Telegram",
+			editorCallback: async (editor: Editor) => {
+				const { botToken, chatId } = this.settings;
+
+				if (!botToken || !chatId) {
+					new Notice("Please set bot token and chat ID in settings.");
+					return;
+				}
+
+				const response = await fetch(
+					`https://api.telegram.org/bot${botToken}/sendMessage`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							chat_id: chatId,
+							text: "*bold*\n_italic_\n__underline__\n~strikethrough~\n[link](https://example.com)",
+							parse_mode: "MarkdownV2",
+						}),
+					}
+				);
+
+				if (response.ok) {
+					new Notice("Message sent to Telegram ✅");
+				} else {
+					const errorText = await response.text();
+					console.error("Telegram API error:", errorText);
+					new Notice("Failed to send message ❌");
+				}
+			},
+		});
+
+		this.addCommand({
+			id: "send-page-with-properties",
+			name: "Send page to Telegram (with properties)",
 			editorCallback: async (editor: Editor) => {
 				const { externalLinkField } = this.settings;
 				const page = editor.getValue();
 
 				if (page) {
-					const converted = covertToMarkdownV2(
+					const converted = convertToMarkdownV2(
 						page,
 						externalLinkField,
 						this.app
