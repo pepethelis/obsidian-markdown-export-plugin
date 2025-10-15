@@ -7,7 +7,28 @@ const tokenizeStrikethrough = (input: string): string => {
 };
 
 const tokenizeItalics = (input: string): string => {
-	return input.replace(/(\*|_)(?=\S)(.+?)(?<=\S)\1/g, "<i>$2</i>");
+	return input.replace(
+		/(?<!<[^>]*)\*(?=\S)(.+?)(?<=\S)\*(?![^<]*>)/g,
+		"<i>$1</i>"
+	);
+};
+
+const tokenizeInlineCode = (input: string): string => {
+	return input.replace(/(?<!\\)`([^`\n]+?)`/g, "<code>$1</code>");
+};
+
+const tokenizeCodeBlock = (input: string): string => {
+	return input.replace(
+		/```([\s\S]*?)```/g,
+		(_, code) => `<pre>${code.trim()}</pre>`
+	);
+};
+
+const tokenizeSpoilers = (input: string): string => {
+	return input.replace(
+		/(?<!\\)\|\|([\s\S]*?)(?<!\\)\|\|/g,
+		"<tg-spoiler>$1</tg-spoiler>"
+	);
 };
 
 const tokenizeUnderline = (input: string): string => {
@@ -35,57 +56,33 @@ const tokenizeLinks = (input: string): string => {
 };
 
 const tokenizeComments = (input: string): string => {
-	// Matches %% comment %% blocks (multiline-safe, ignores escaped %%)
-	return input.replace(/(?<!\\)%%([\s\S]*?)(?<!\\)%%/g, (_, comment) => {
-		// Trim surrounding spaces/newlines inside the comment
-		const cleaned = comment.trim();
+	// Remove %%comments%% and any surrounding blank lines or spaces
+	return input.replace(/^[ \t]*%%[\s\S]*?%%[ \t]*(\r?\n)?/gm, "");
+};
 
-		// Escape HTML-sensitive characters inside comments for safety
-		const safe = cleaned;
-		// Wrap as valid HTML comment token
-		return `<!-- ${safe} -->`;
-	});
+const tokenizeBlockquote = (input: string): string => {
+	return input.replace(
+		/(^>[\s\S]+?(?=(?:\n{2,}|$)))/gm, // match consecutive quote lines until double line break or EOF
+		(block) => {
+			const content = block
+				.replace(/^>\s?/gm, "") // remove leading >
+				.trim();
+			return `<blockquote>${content}</blockquote>`;
+		}
+	);
 };
 
 const tokenizeTables = (input: string): string => {
-	// Match tables: header | separator | body rows
-	const tableRegex =
-		/((?:\|[^\n]+\|\r?\n)+\|(?:\s*[-:]+\s*\|)+\r?\n(?:\|[^\n]+\|\r?\n?)*)/g;
+	return input.replace(/((?:^\|.*\|\s*\n)+)(?=(?:\n|$))/gm, (match) => {
+		// clean and escape content
+		const codeContent = match
+			.trimEnd()
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;");
 
-	return input.replace(tableRegex, (match) => {
-		// Split into lines
-		const lines = match.trim().split(/\r?\n/);
-		if (lines.length < 2) return match;
-
-		// Header row (remove leading/trailing pipes, split by "|")
-		const headers = lines[0]
-			.trim()
-			.replace(/^\||\|$/g, "")
-			.split("|")
-			.map((h) => h.trim());
-
-		// Body rows (skip 2nd line = separator)
-		const bodyRows = lines.slice(2).map((line) =>
-			line
-				.trim()
-				.replace(/^\||\|$/g, "")
-				.split("|")
-				.map((cell) => cell.trim())
-		);
-
-		// Build HTML table
-		const headerHTML =
-			"<tr>" + headers.map((h) => `<th>${h}</th>`).join("") + "</tr>";
-		const bodyHTML = bodyRows
-			.map(
-				(row) =>
-					"<tr>" +
-					row.map((cell) => `<td>${cell}</td>`).join("") +
-					"</tr>"
-			)
-			.join("");
-
-		return `<table>${headerHTML}${bodyHTML}</table>`;
+		// wrap in pre/code tags
+		return `<pre><code>${codeContent}</code></pre>\n`;
 	});
 };
 
@@ -97,4 +94,8 @@ export const tokenizeMethods = [
 	tokenizeUnderline,
 	tokenizeTables,
 	tokenizeComments,
+	tokenizeInlineCode,
+	tokenizeCodeBlock,
+	tokenizeSpoilers,
+	tokenizeBlockquote,
 ];

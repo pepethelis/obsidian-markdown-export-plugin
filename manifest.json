@@ -1,7 +1,7 @@
 {
 	"id": "tg-markdown-export-plugin",
 	"name": "Telegram md export",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"minAppVersion": "0.15.0",
 	"description": "Export markdown files to properly formatted telegram messages.",
 	"author": "pepethelis",

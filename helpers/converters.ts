@@ -57,5 +57,7 @@ export const convertWikilinks = (
 		}
 	);
 
+	console.log("With converted wikilinks:", {result});
+
 	return result;
 };

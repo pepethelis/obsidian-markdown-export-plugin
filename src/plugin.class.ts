@@ -1,8 +1,8 @@
-import { convertToMarkdownV2 } from "helpers/mdV2Converter";
 import { Editor, MarkdownView, Notice, Plugin } from "obsidian";
 import { MyPluginSettings } from "./types";
 import { SampleSettingTab } from "./settingsTab.class";
 import { DEFAULT_SETTINGS } from "./defaultSettings";
+import { convertToHTML } from "helpers/htmlConverter";
 
 export default class MyPlugin extends Plugin {
 	settings: MyPluginSettings;
@@ -33,11 +33,7 @@ export default class MyPlugin extends Plugin {
 	async sendToTelegram(message: string) {
 		const { botToken, chatId, externalLinkField } = this.settings;
 
-		const converted = convertToMarkdownV2(
-			message,
-			externalLinkField,
-			this.app
-		);
+		const converted = convertToHTML(message, externalLinkField, this.app);
 
 		if (!botToken || !chatId) {
 			new Notice("Please set bot token and chat ID in settings.");
@@ -52,7 +48,7 @@ export default class MyPlugin extends Plugin {
 				body: JSON.stringify({
 					chat_id: chatId,
 					text: converted,
-					parse_mode: "MarkdownV2",
+					parse_mode: "HTML",
 				}),
 			}
 		);
@@ -126,33 +122,10 @@ export default class MyPlugin extends Plugin {
 			id: "send-test-data",
 			name: "Send test data to Telegram",
 			editorCallback: async (editor: Editor) => {
-				const { botToken, chatId } = this.settings;
+				const testData =
+					"*bold*\n_italic_\n__underline__\n~strikethrough~\n[link](https://url.com)\n[snake_link](https://t.me/dekanat_tef)\n||spoiler||";
 
-				if (!botToken || !chatId) {
-					new Notice("Please set bot token and chat ID in settings.");
-					return;
-				}
-
-				const response = await fetch(
-					`https://api.telegram.org/bot${botToken}/sendMessage`,
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							chat_id: chatId,
-							text: "*bold*\n_italic_\n__underline__\n~strikethrough~\n[link](https://example.com)\n||spoiler||",
-							parse_mode: "MarkdownV2",
-						}),
-					}
-				);
-
-				if (response.ok) {
-					new Notice("Message sent to Telegram ✅");
-				} else {
-					const errorText = await response.text();
-					console.error("Telegram API error:", errorText);
-					new Notice("Failed to send message ❌");
-				}
+				await this.sendToTelegram(testData);
 			},
 		});
 
