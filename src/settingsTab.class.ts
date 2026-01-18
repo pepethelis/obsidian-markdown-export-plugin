@@ -1,12 +1,21 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, SecretComponent, requireApiVersion } from "obsidian";
 import MyPlugin from "./plugin.class";
 
-export class SampleSettingTab extends PluginSettingTab {
+export interface MyPluginSettings {
+	botToken: string;
+	chatId: string;
+	externalLinkField: string;
+}
+
+export class MdExportSettingTab extends PluginSettingTab {
 	plugin: MyPlugin;
 
 	constructor(app: App, plugin: MyPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+		if (typeof requireApiVersion === 'function' && requireApiVersion('1.11.0')) {
+			this.icon = 'message-square-share';
+		}
 	}
 
 	display(): void {
@@ -16,14 +25,13 @@ export class SampleSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Telegram Bot Token")
 			.setDesc("Your bot token from BotFather")
-			.addText((text) =>
-				text
-					.setPlaceholder("123456:ABC...")
+			.addComponent((el) =>
+				new SecretComponent(this.app, el)
 					.setValue(this.plugin.settings.botToken)
-					.onChange(async (value) => {
+					.onChange((value) => {
 						this.plugin.settings.botToken = value;
-						await this.plugin.saveSettings();
-					})
+						this.plugin.saveSettings();
+					}),
 			);
 
 		new Setting(containerEl)
@@ -36,7 +44,7 @@ export class SampleSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.chatId = value;
 						await this.plugin.saveSettings();
-					})
+					}),
 			);
 
 		new Setting(containerEl)
@@ -49,7 +57,7 @@ export class SampleSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.externalLinkField = value;
 						await this.plugin.saveSettings();
-					})
+					}),
 			);
 	}
 }

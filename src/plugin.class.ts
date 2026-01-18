@@ -1,6 +1,6 @@
 import { Editor, MarkdownView, Notice, Plugin } from "obsidian";
 import { MyPluginSettings } from "./types";
-import { SampleSettingTab } from "./settingsTab.class";
+import { MdExportSettingTab } from "./settingsTab.class";
 import { DEFAULT_SETTINGS } from "./defaultSettings";
 import { convertToHTML } from "helpers/htmlConverter";
 
@@ -10,7 +10,7 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new MdExportSettingTab(this.app, this));
 		this.addElements();
 	}
 
@@ -22,7 +22,7 @@ export default class MyPlugin extends Plugin {
 		this.settings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
-			await this.loadData()
+			await this.loadData(),
 		);
 	}
 
@@ -31,7 +31,11 @@ export default class MyPlugin extends Plugin {
 	}
 
 	async sendToTelegram(message: string) {
-		const { botToken, chatId, externalLinkField } = this.settings;
+		const { chatId, externalLinkField } = this.settings;
+
+		const botToken = this.app.secretStorage.getSecret(
+			this.settings.botToken,
+		);
 
 		const converted = convertToHTML(message, externalLinkField, this.app);
 
@@ -50,7 +54,7 @@ export default class MyPlugin extends Plugin {
 					text: converted,
 					parse_mode: "HTML",
 				}),
-			}
+			},
 		);
 
 		if (response.ok) {
@@ -83,10 +87,15 @@ export default class MyPlugin extends Plugin {
 				let page = editor.getValue();
 				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
 
+				if (!page) {
+					new Notice("Please write something to send.");
+					return;
+				}
+
 				if (page) {
 					await this.sendToTelegram(page);
 				}
-			}
+			},
 		);
 
 		ribbonIconEl.addClass("my-plugin-ribbon-class");
@@ -112,20 +121,14 @@ export default class MyPlugin extends Plugin {
 				let page = editor.getValue();
 				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
 
+				if (!page) {
+					new Notice("Please write something to send.");
+					return;
+				}
+
 				if (page) {
 					await this.sendToTelegram(page);
 				}
-			},
-		});
-
-		this.addCommand({
-			id: "send-test-data",
-			name: "Send test data to Telegram",
-			editorCallback: async (editor: Editor) => {
-				const testData =
-					"*bold*\n_italic_\n__underline__\n~strikethrough~\n[link](https://url.com)\n[snake_link](https://t.me/dekanat_tef)\n||spoiler||";
-
-				await this.sendToTelegram(testData);
 			},
 		});
 

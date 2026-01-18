@@ -8,5 +8,5 @@ If your plugin does not need CSS, delete this file.
 */
 
 .my-plugin-ribbon-class {
-	background-color: #0001;
+	/* background-color: #0001; */
 }
