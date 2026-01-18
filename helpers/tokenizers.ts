@@ -1,6 +1,6 @@
 const tokenizeHeaders = (input: string): string => {
 	return input.replace(
-		/^(#{1,6})\s*(.+)$/gm,
+		/^(#{1,6})\s{1,}(.+)$/gm,
 		(_, hashes, text) => `<b>${text.trim()}</b>\n`,
 	);
 };
@@ -90,9 +90,13 @@ const tokenizeBlockquote = (input: string): string => {
 		/^>\s?(.*)(?:\n((?:>\s?.*(?:\n|$))*))/gm,
 		(_, firstLine, contentLines) => {
 			// Clean up the content lines: remove leading '> ' and trim
-			const content = [firstLine, ...(contentLines ? contentLines.match(/^>\s?.*/gm) || [] : [])]
-				.map(line => line.replace(/^>\s?/, "").trim())
-				.join("\n").trim();
+			const content = [
+				firstLine,
+				...(contentLines ? contentLines.match(/^>\s?.*/gm) || [] : []),
+			]
+				.map((line) => line.replace(/^>\s?/, "").trim())
+				.join("\n")
+				.trim();
 			return `<blockquote>${content}</blockquote>`;
 		},
 	);
@@ -183,8 +187,9 @@ const tokenizeCallouts = (input: string): string => {
 			// Only include lines that start with '> '
 			const content = contentLines
 				? (contentLines.match(/^> .*/gm) || [])
-					.map(line => line.replace(/^> /, "").trim())
-					.join("\n").trim()
+						.map((line) => line.replace(/^> /, "").trim())
+						.join("\n")
+						.trim()
 				: "";
 			return `<blockquote>${icon} <b>${title}</b>\n${content}${content ? "\n" : ""}</blockquote>`;
 		},
