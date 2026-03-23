@@ -1,11 +1,5 @@
 import { App, PluginSettingTab, Setting, SecretComponent, requireApiVersion } from "obsidian";
-import MyPlugin from "./plugin.class";
-
-export interface MyPluginSettings {
-	botToken: string;
-	chatId: string;
-	externalLinkField: string;
-}
+import MyPlugin from "../plugin.class";
 
 export class MdExportSettingTab extends PluginSettingTab {
 	plugin: MyPlugin;
@@ -56,6 +50,19 @@ export class MdExportSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.externalLinkField)
 					.onChange(async (value) => {
 						this.plugin.settings.externalLinkField = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Channel Username")
+			.setDesc("Channel username to send messages to")
+			.addText((text) =>
+				text
+					.setPlaceholder("e.g. '@channel_name' or '-100123456789'")
+					.setValue(this.plugin.settings.channelUsername)
+					.onChange(async (value) => {
+						this.plugin.settings.channelUsername = value;
 						await this.plugin.saveSettings();
 					}),
 			);
