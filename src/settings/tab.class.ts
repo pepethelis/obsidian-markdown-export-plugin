@@ -42,8 +42,62 @@ export class MdExportSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName("Publication Date Field")
+			.setDesc("Field name for publication date in the note. Leave empty if not used.")
+			.addText((text) =>
+				text
+					.setPlaceholder("e.g. 'pubDate' or 'date'")
+					.setValue(this.plugin.settings.pubDateField)
+					.onChange(async (value) => {
+						this.plugin.settings.pubDateField = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		
+		new Setting(containerEl)
+			.setName("Last Updated Date Field")
+			.setDesc("Field name for last updated date in the note. Leave empty if not used.")
+			.addText((text) =>
+				text
+					.setPlaceholder("e.g. 'updatedAt' or 'lastModified'")
+					.setValue(this.plugin.settings.updateDateField)
+					.onChange(async (value) => {
+						this.plugin.settings.updateDateField = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Status Field")
+			.setDesc("Field name for status in the note. Leave empty if not used.")
+			.addText((text) =>
+				text
+					.setPlaceholder("e.g. 'status'")
+
+					.setValue(this.plugin.settings.statusField)
+					.onChange(async (value) => {
+						this.plugin.settings.statusField = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Published Status Value")
+			.setDesc("The value indicating a note is published.")
+			.addText((text) =>
+				text
+					.setPlaceholder("e.g. 'published'")
+
+					.setValue(this.plugin.settings.publishedStatusValue)
+					.onChange(async (value) => {
+						this.plugin.settings.publishedStatusValue = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
 			.setName("External Link Field")
-			.setDesc("Field name for external link in the note")
+			.setDesc("Field name for external link in the note. Leave empty if not used.")
 			.addText((text) =>
 				text
 					.setPlaceholder("e.g. 'post' or 'externalLink'")

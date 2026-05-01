@@ -78,14 +78,54 @@ export class PostCreate {
 
 				const postLink = await this.exec(page);
 
-				if (postLink) {
+				if (!postLink) {
+					new Notice(
+						"Failed to send message, not saving link to frontmatter.",
+					);
+					return;
+				}
+
+				if (plugin.settings.externalLinkField) {
 					await plugin.app.fileManager.processFrontMatter(
 						file,
 						(frontmatter) => {
 							frontmatter[externalLinkField] = postLink;
-						}
+						},
 					);
 					new Notice(`Link saved to ${externalLinkField} property.`);
+				}
+
+				if (plugin.settings.pubDateField) {
+					// YYYY-MM-DD
+					const pubDate = new Date().toISOString().split("T")[0];
+					await plugin.app.fileManager.processFrontMatter(
+						file,
+						(frontmatter) => {
+							frontmatter[plugin.settings.pubDateField] = pubDate;
+						},
+					);
+				}
+
+				if (
+					plugin.settings.statusField &&
+					plugin.settings.publishedStatusValue
+				) {
+					await plugin.app.fileManager.processFrontMatter(
+						file,
+						(frontmatter) => {
+							frontmatter[plugin.settings.statusField] =
+								plugin.settings.publishedStatusValue;
+						},
+					);
+				}
+
+				if (
+					plugin.settings.statusField &&
+					!plugin.settings.publishedStatusValue
+				) {
+					new Notice(
+						"Status field is set but published status value is empty. Please set published status value in settings to update the status field.",
+					);
 				}
 			},
 		);
@@ -101,7 +141,9 @@ export class PostCreate {
 		const { channelUsername, externalLinkField } = this.plugin.settings;
 		const app = this.plugin.app;
 
-		const botToken = await app.secretStorage.getSecret(this.plugin.settings.botToken);
+		const botToken = await app.secretStorage.getSecret(
+			this.plugin.settings.botToken,
+		);
 
 		const converted = convertToHTML(message, externalLinkField, app);
 

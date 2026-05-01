@@ -31,7 +31,6 @@ export class PostUpdate {
 				const fileCache = plugin.app.metadataCache.getFileCache(file);
 				const tgPostLink = fileCache?.frontmatter?.[externalLinkField];
 
-
 				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
 
 				if (!page) {
@@ -44,7 +43,21 @@ export class PostUpdate {
 					return;
 				}
 
-				await this.exec(tgPostLink, page);
+				const result = await this.exec(tgPostLink, page);
+
+				if (result) {
+					if (plugin.settings.updateDateField) {
+						// YYYY-MM-DD
+						const pubDate = new Date().toISOString().split("T")[0];
+						await plugin.app.fileManager.processFrontMatter(
+							file,
+							(frontmatter) => {
+								frontmatter[plugin.settings.updateDateField] =
+									pubDate;
+							},
+						);
+					}
+				}
 			},
 		);
 	}
@@ -56,14 +69,13 @@ export class PostUpdate {
 	 * @param settings - The plugin settings.
 	 * @param app - The Obsidian application instance.
 	 */
-	async exec(
-		postLink: string,
-		message: string,
-	) {
+	async exec(postLink: string, message: string) {
 		const { externalLinkField } = this.plugin.settings;
 		const app = this.plugin.app;
 
-		const botToken = await app.secretStorage.getSecret(this.plugin.settings.botToken);
+		const botToken = await app.secretStorage.getSecret(
+			this.plugin.settings.botToken,
+		);
 
 		const converted = convertToHTML(message, externalLinkField, app);
 
@@ -119,10 +131,12 @@ export class PostUpdate {
 
 		if (response.ok) {
 			new Notice("Post updated ✅");
+			return true;
 		} else {
 			const errorText = await response.text();
 			console.error("Telegram API error:", errorText);
 			new Notice("Failed to update post ❌");
+			return false;
 		}
 	}
 }
