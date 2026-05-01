@@ -1,5 +1,5 @@
 import { App, Notice, Modal, Setting, MarkdownView } from "obsidian";
-import { convertToHTML } from "src/helpers/htmlConverter";
+import { convertToHTML } from "../helpers/htmlConverter";
 import MyPlugin from "../plugin.class";
 
 class ReplyLinkModal extends Modal {
@@ -143,6 +143,7 @@ export class PostCreate {
 			chat_id: chatId,
 			text: converted,
 			parse_mode: "HTML",
+			disable_web_page_preview: true,
 		};
 
 		if (replyToMessageId) {

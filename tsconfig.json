@@ -1,13 +1,15 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "inlineSourceMap": true,
     "inlineSources": true,
-    "module": "ESNext",
+    "module": "Node16",
     "target": "es2019",
     "allowJs": true,
     "noImplicitAny": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
+    "types": [
+      "bun"
+    ],
     "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": true,

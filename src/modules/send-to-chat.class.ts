@@ -1,5 +1,5 @@
 import { MarkdownView, Notice, Editor } from "obsidian";
-import { convertToHTML } from "src/helpers/htmlConverter";
+import { convertToHTML } from "../helpers/htmlConverter";
 import MyPlugin from "../plugin.class";
 
 export class SendToChat {
@@ -96,6 +96,7 @@ export class SendToChat {
 					chat_id: chatId,
 					text: converted,
 					parse_mode: "HTML",
+					disable_web_page_preview: true,
 				}),
 			},
 		);

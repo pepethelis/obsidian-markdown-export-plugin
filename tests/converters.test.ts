@@ -54,4 +54,13 @@ describe("converters", () => {
 		);
 		expect(result).toBe("[published_doc](https://example.com/doc)");
 	});
+
+	test("convertWikilinks preserves existing HTML entities", () => {
+		const result = convertWikilinks(
+			"[[published_doc|Rock &amp; Roll]]",
+			mockApp,
+			"extLink",
+		);
+		expect(result).toBe("[Rock &amp; Roll](https://example.com/doc)");
+	});
 });

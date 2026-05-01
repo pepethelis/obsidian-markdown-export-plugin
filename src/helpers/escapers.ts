@@ -13,3 +13,10 @@ export const plusEscape = (input: string): string => {
 export const minusEscape = (input: string): string => {
 	return input.replace(/(?<!\\)-/g, "\\-");
 };
+
+export const escapeHtmlPreserveEntities = (input: string): string => {
+	return input
+		.replace(/&(?![a-zA-Z]+;|#\d+;|#x[0-9A-Fa-f]+;)/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
+};

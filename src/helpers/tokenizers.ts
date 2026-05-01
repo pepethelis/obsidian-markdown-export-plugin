@@ -1,3 +1,5 @@
+import { escapeHtmlPreserveEntities } from "./escapers";
+
 const tokenizeHeaders = (input: string): string => {
 	return input.replace(
 		/^(#{1,6})\s{1,}(.+)$/gm,
@@ -65,11 +67,8 @@ const tokenizeLinks = (input: string): string => {
 		(_, text, url, title) => {
 			if (!/^https?:\/\/[^\s)]+$/i.test(url)) return text;
 
-			const safeText = text
-				.replace(/&/g, "&amp;")
-				.replace(/</g, "&lt;")
-				.replace(/>/g, "&gt;");
-			const safeUrl = url.replace(/"/g, "&quot;");
+			const safeText = escapeHtmlPreserveEntities(text);
+			const safeUrl = escapeHtmlPreserveEntities(url).replace(/"/g, "&quot;");
 			const safeTitle = title
 				? ` title="${title.replace(/"/g, "&quot;")}"`
 				: "";
@@ -105,11 +104,7 @@ const tokenizeBlockquote = (input: string): string => {
 const tokenizeTables = (input: string): string => {
 	return input.replace(/((?:^\|.*\|\s*\n)+)(?=(?:\n|$))/gm, (match) => {
 		// clean and escape content
-		const codeContent = match
-			.trimEnd()
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;");
+		const codeContent = escapeHtmlPreserveEntities(match.trimEnd());
 
 		// wrap in pre/code tags
 		return `<pre><code>${codeContent}</code></pre>\n`;

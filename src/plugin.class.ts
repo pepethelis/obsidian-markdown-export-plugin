@@ -7,7 +7,7 @@ import { PostCreate } from "./modules/post-create.class";
 import { PostUpdate } from "./modules/post-update.class";
 
 export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+	settings!: MyPluginSettings;
 	isElementsAdded = false;
 
 	async onload() {

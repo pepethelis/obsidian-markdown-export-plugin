@@ -1,4 +1,5 @@
 import { App } from "obsidian";
+import { escapeHtmlPreserveEntities } from "./escapers";
 
 export const convertWikilinks = (
 	input: string,
@@ -10,20 +11,13 @@ export const convertWikilinks = (
 		linkRegex,
 		(_fullMatch, linkTargetRaw, displayOverrideRaw) => {
 			const linkTarget = linkTargetRaw.trim();
-			let displayText = linkTarget
-				.replace(/&/g, "&amp;")
-				.replace(/</g, "&lt;")
-				.replace(/>/g, "&gt;");
+			let displayText = escapeHtmlPreserveEntities(linkTarget);
 
 			if (
 				displayOverrideRaw !== undefined &&
 				displayOverrideRaw.trim() !== ""
 			) {
-				displayText = displayOverrideRaw
-					.trim()
-					.replace(/&/g, "&amp;")
-					.replace(/</g, "&lt;")
-					.replace(/>/g, "&gt;");
+				displayText = escapeHtmlPreserveEntities(displayOverrideRaw.trim());
 			}
 
 			// Extract path and optional section (#heading or ^blockid)
