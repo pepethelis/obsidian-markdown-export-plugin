@@ -8,3 +8,5 @@ export interface MyPluginSettings {
 	publishedStatusValue: string;
 	channelUsername: string;
 }
+
+export type PiplineMethodParams = (params: { input: string }) => string;

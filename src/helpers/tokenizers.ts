@@ -1,74 +1,97 @@
+import { PiplineMethodParams } from "../types";
 import { escapeHtmlPreserveEntities } from "./escapers";
 
-const tokenizeHeaders = (input: string): string => {
+const tokenizeHeaders: PiplineMethodParams = (params) => {
+	const { input } = params;
+
 	return input.replace(
 		/^(#{1,6})\s{1,}(.+)$/gm,
-		(_, hashes, text) => `<b>${text.trim()}</b>\n`,
+		(_, hashes, text) => `\n<b>${text.trim()}</b>`,
 	);
 };
 
-const tokenizeBulletedLists = (input: string): string => {
-	// no changes actually needed for bulleted lists
+const tokenizeBulletedLists: PiplineMethodParams = (params) => {
+	const { input } = params;
+
 	return input;
 };
 
-const tokenizeNumberedLists = (input: string): string => {
-	// no changes actually needed for numbered lists
+const tokenizeNumberedLists: PiplineMethodParams = (params) => {
+	const { input } = params;
+
 	return input;
 };
 
-const tokenizeCheckboxes = (input: string): string => {
+const tokenizeCheckboxes: PiplineMethodParams = (params) => {
+	const { input } = params;
 	return input.replace(
 		/^(\s*)- \[( |x)\] /gm,
 		(_, indent, checked) => `${indent}${checked === "x" ? "☑️" : "⏹️"} `,
 	);
 };
 
-const tokenizeBold = (input: string): string => {
+const tokenizeBold: PiplineMethodParams = (params) => {
+	const { input } = params;
 	return input.replace(/(\*\*|__)(?=\S)(.+?[*_]*)(?<=\S)\1/g, "<b>$2</b>");
 };
 
-const tokenizeStrikethrough = (input: string): string => {
+const tokenizeStrikethrough: PiplineMethodParams = (params) => {
+	const { input } = params;
 	return input.replace(/~~(?=\S)([^\n]*?\S)~~/g, "<s>$1</s>");
 };
 
-const tokenizeItalics = (input: string): string => {
+const tokenizeItalics: PiplineMethodParams = (params) => {
+	const { input } = params;
 	return input.replace(
 		/(?<!<[^>]*)\*(?=\S)(.+?)(?<=\S)\*(?![^<]*>)/g,
 		"<i>$1</i>",
 	);
 };
 
-const tokenizeInlineCode = (input: string): string => {
+const tokenizeMarked: PiplineMethodParams = (params) => {
+	const { input } = params;
+
+	return input.replace(/==(?=\S)(.+?)(?<=\S)==/g, "<b>$1</b>");
+};
+
+const tokenizeInlineCode: PiplineMethodParams = (params) => {
+	const { input } = params;
 	return input.replace(/(?<!\\)`([^`\n]+?)`/g, "<code>$1</code>");
 };
 
-const tokenizeCodeBlock = (input: string): string => {
+const tokenizeCodeBlock: PiplineMethodParams = (params) => {
+	const { input } = params;
 	return input.replace(
 		/```([\s\S]*?)```/g,
 		(_, code) => `<pre>${code.trim()}</pre>`,
 	);
 };
 
-const tokenizeSpoilers = (input: string): string => {
+const tokenizeSpoilers: PiplineMethodParams = (params) => {
+	const { input } = params;
 	return input.replace(
 		/(?<!\\)\|\|([\s\S]*?)(?<!\\)\|\|/g,
 		"<tg-spoiler>$1</tg-spoiler>",
 	);
 };
 
-const tokenizeUnderline = (input: string): string => {
+const tokenizeUnderline: PiplineMethodParams = (params) => {
+	const { input } = params;
 	return input;
 };
 
-const tokenizeLinks = (input: string): string => {
+const tokenizeLinks: PiplineMethodParams = (params) => {
+	const { input } = params;
 	return input.replace(
 		/\[([^\]]+)\]\((https?:\/\/[^\s)]+)(?:\s+"([^"]+)")?\)/g,
 		(_, text, url, title) => {
 			if (!/^https?:\/\/[^\s)]+$/i.test(url)) return text;
 
 			const safeText = escapeHtmlPreserveEntities(text);
-			const safeUrl = escapeHtmlPreserveEntities(url).replace(/"/g, "&quot;");
+			const safeUrl = escapeHtmlPreserveEntities(url).replace(
+				/"/g,
+				"&quot;",
+			);
 			const safeTitle = title
 				? ` title="${title.replace(/"/g, "&quot;")}"`
 				: "";
@@ -78,12 +101,14 @@ const tokenizeLinks = (input: string): string => {
 	);
 };
 
-const tokenizeComments = (input: string): string => {
+const tokenizeComments: PiplineMethodParams = (params) => {
+	const { input } = params;
 	// Remove %%comments%% and any surrounding blank lines or spaces
 	return input.replace(/^[ \t]*%%[\s\S]*?%%[ \t]*(\r?\n)?/gm, "");
 };
 
-const tokenizeBlockquote = (input: string): string => {
+const tokenizeBlockquote: PiplineMethodParams = (params) => {
+	const { input } = params;
 	return input.replace(
 		// Match blockquote header and all following lines starting with '> '
 		/^>\s?(.*)(?:\n((?:>\s?.*(?:\n|$))*))/gm,
@@ -100,8 +125,15 @@ const tokenizeBlockquote = (input: string): string => {
 		},
 	);
 };
+const tokenizeDivider: PiplineMethodParams = (params) => {
+	const { input } = params;
 
-const tokenizeTables = (input: string): string => {
+	return input.replace(/^\s*([-*_]){3,}\s*$/gm, "-----");
+};
+
+const tokenizeTables: PiplineMethodParams = (params) => {
+	const { input } = params;
+
 	return input.replace(/((?:^\|.*\|\s*\n)+)(?=(?:\n|$))/gm, (match) => {
 		// clean and escape content
 		const codeContent = escapeHtmlPreserveEntities(match.trimEnd());
@@ -111,7 +143,8 @@ const tokenizeTables = (input: string): string => {
 	});
 };
 
-const tokenizeCallouts = (input: string): string => {
+const tokenizeCallouts: PiplineMethodParams = (params) => {
+	const { input } = params;
 	enum CalloutTypes {
 		Note = "note",
 		Abstract = "abstract",
@@ -195,9 +228,11 @@ export const tokenizeMethods = [
 	tokenizeHeaders,
 	tokenizeLinks,
 	tokenizeBold,
+	tokenizeMarked,
 	tokenizeStrikethrough,
 	tokenizeItalics,
 	tokenizeUnderline,
+	tokenizeDivider,
 	tokenizeTables,
 	tokenizeComments,
 	tokenizeInlineCode,

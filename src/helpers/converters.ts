@@ -1,11 +1,14 @@
-import { App } from "obsidian";
 import { escapeHtmlPreserveEntities } from "./escapers";
+import { App } from "obsidian";
 
-export const convertWikilinks = (
-	input: string,
-	app: App,
-	wikilinkExternalLinkField: string
-): string => {
+export const convertWikilinks = (params: {
+	input: string;
+	app: App;
+	wikilinkExternalLinkField: string;
+	isRich?: boolean;
+}): string => {
+	const { input, app, wikilinkExternalLinkField} = params;
+
 	const linkRegex = /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g;
 	const result = input.replace(
 		linkRegex,
@@ -17,14 +20,16 @@ export const convertWikilinks = (
 				displayOverrideRaw !== undefined &&
 				displayOverrideRaw.trim() !== ""
 			) {
-				displayText = escapeHtmlPreserveEntities(displayOverrideRaw.trim());
+				displayText = escapeHtmlPreserveEntities(
+					displayOverrideRaw.trim(),
+				);
 			}
 
 			// Extract path and optional section (#heading or ^blockid)
 			const [filePath] = linkTarget.split("#");
 			const targetFile = app.metadataCache.getFirstLinkpathDest(
 				filePath,
-				"/"
+				"/",
 			);
 
 			if (!targetFile) {
@@ -48,10 +53,10 @@ export const convertWikilinks = (
 			} else {
 				return `${displayText}⚠️🔗`;
 			}
-		}
+		},
 	);
 
-	console.log("With converted wikilinks:", {result});
+	console.log("With converted wikilinks:", { result });
 
 	return result;
 };

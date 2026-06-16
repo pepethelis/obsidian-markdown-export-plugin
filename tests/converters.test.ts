@@ -28,39 +28,47 @@ const mockApp = {
 
 describe("converters", () => {
 	test("convertWikilinks with existing published document", () => {
-		const result = convertWikilinks(
-			"[[published_doc|Click Here]]",
-			mockApp,
-			"extLink",
-		);
+		const result = convertWikilinks({
+			input: "[[published_doc|Click Here]]",
+			app: mockApp,
+			wikilinkExternalLinkField: "extLink",
+		});
 		expect(result).toBe("[Click Here](https://example.com/doc)");
 	});
 
 	test("convertWikilinks with missing document", () => {
-		const result = convertWikilinks("[[missing_doc]]", mockApp, "extLink");
+		const result = convertWikilinks({
+			input: "[[missing_doc]]",
+			app: mockApp,
+			wikilinkExternalLinkField: "extLink",
+		});
 		expect(result).toBe("missing_doc⚠️🔗");
 	});
 
 	test("convertWikilinks with draft document", () => {
-		const result = convertWikilinks("[[draft_doc]]", mockApp, "extLink");
+		const result = convertWikilinks({
+			input: "[[draft_doc]]",
+			app: mockApp,
+			wikilinkExternalLinkField: "extLink",
+		});
 		expect(result).toBe("draft_doc⏳");
 	});
 
 	test("convertWikilinks without display override", () => {
-		const result = convertWikilinks(
-			"[[published_doc]]",
-			mockApp,
-			"extLink",
-		);
+		const result = convertWikilinks({
+			input: "[[published_doc]]",
+			app: mockApp,
+			wikilinkExternalLinkField: "extLink",
+		});
 		expect(result).toBe("[published_doc](https://example.com/doc)");
 	});
 
 	test("convertWikilinks preserves existing HTML entities", () => {
-		const result = convertWikilinks(
-			"[[published_doc|Rock &amp; Roll]]",
-			mockApp,
-			"extLink",
-		);
+		const result = convertWikilinks({
+			input: "[[published_doc|Rock &amp; Roll]]",
+			app: mockApp,
+			wikilinkExternalLinkField: "extLink",
+		});
 		expect(result).toBe("[Rock &amp; Roll](https://example.com/doc)");
 	});
 });

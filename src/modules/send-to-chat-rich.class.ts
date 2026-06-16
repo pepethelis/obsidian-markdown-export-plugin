@@ -1,43 +1,47 @@
 import { MarkdownView, Notice, Editor } from "obsidian";
-import { convertToHTML } from "../helpers/htmlConverter";
+import { convertToTgMd } from "../helpers/mdConverter";
 import MyPlugin from "../plugin.class";
 
-export class SendToChat {
+export class SendToChatRich {
 	private plugin: MyPlugin;
 
 	constructor(plugin: MyPlugin) {
 		this.plugin = plugin;
-		
+
 		plugin
-			.addRibbonIcon("dice", "Send to Telegram Chat", async () => {
-				const { chatId } = plugin.settings;
-				if (!chatId) {
-					new Notice("Please set the chat ID in the settings.");
-					return;
-				}
+			.addRibbonIcon(
+				"dice",
+				"Send to Telegram Chat (Use rich text)",
+				async () => {
+					const { chatId } = plugin.settings;
+					if (!chatId) {
+						new Notice("Please set the chat ID in the settings.");
+						return;
+					}
 
-				const activeView =
-					plugin.app.workspace.getActiveViewOfType(MarkdownView);
-				if (!activeView) return;
+					const activeView =
+						plugin.app.workspace.getActiveViewOfType(MarkdownView);
+					if (!activeView) return;
 
-				const editor = activeView.editor;
-				let page = editor.getValue();
-				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
+					const editor = activeView.editor;
+					let page = editor.getValue();
+					page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
 
-				if (!page) {
-					new Notice("Please write something to send.");
-					return;
-				}
+					if (!page) {
+						new Notice("Please write something to send.");
+						return;
+					}
 
-				if (page) {
-					await this.exec(page);
-				}
-			})
+					if (page) {
+						await this.exec(page);
+					}
+				},
+			)
 			.addClass("my-plugin-ribbon-class");
 
 		plugin.addCommand({
-			id: "send-selected-text",
-			name: "Send selected text to Telegram",
+			id: "send-rich-selected-text",
+			name: "Send selected text to Telegram (Use rich text)",
 			editorCallback: async (editor: Editor) => {
 				const selectedText = editor.getSelection();
 				if (!selectedText) {
@@ -50,8 +54,8 @@ export class SendToChat {
 		});
 
 		plugin.addCommand({
-			id: "send-page-without-properties",
-			name: "Send page to Telegram",
+			id: "send-rich-page-without-properties",
+			name: "Send page to Telegram (Use rich text)",
 			editorCallback: async (editor: Editor) => {
 				let page = editor.getValue();
 				page = page.replace(/^---\n([\s\S]*?)\n---\n?/, "").trim();
@@ -78,13 +82,15 @@ export class SendToChat {
 		const { chatId, externalLinkField } = this.plugin.settings;
 		const app = this.plugin.app;
 
-		const botToken = await app.secretStorage.getSecret(this.plugin.settings.botToken);
+		const botToken = await app.secretStorage.getSecret(
+			this.plugin.settings.botToken,
+		);
 
-		const converted = convertToHTML({
+		const converted = convertToTgMd({
 			content: message,
-			app,
 			wikilinkExternalLinkField: externalLinkField,
-			isRich: false,
+			app,
+			isRich: true,
 		});
 
 		if (!botToken || !chatId) {
@@ -93,13 +99,15 @@ export class SendToChat {
 		}
 
 		const response = await fetch(
-			`https://api.telegram.org/bot${botToken}/sendMessage`,
+			`https://api.telegram.org/bot${botToken}/sendRichMessage`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					chat_id: chatId,
-					text: converted,
+					rich_message: {
+						markdown: converted,
+					},
 					parse_mode: "HTML",
 					disable_web_page_preview: true,
 				}),

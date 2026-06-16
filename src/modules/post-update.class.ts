@@ -77,7 +77,12 @@ export class PostUpdate {
 			this.plugin.settings.botToken,
 		);
 
-		const converted = convertToHTML(message, externalLinkField, app);
+		const converted = convertToHTML({
+			content: message,
+			app,
+			wikilinkExternalLinkField: externalLinkField,
+			isRich: false,
+		});
 
 		if (!botToken) {
 			new Notice("Please set bot token in settings.");

@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS } from "./settings/default";
 import { SendToChat } from "./modules/send-to-chat.class";
 import { PostCreate } from "./modules/post-create.class";
 import { PostUpdate } from "./modules/post-update.class";
+import { SendToChatRich } from "./modules/send-to-chat-rich.class";
 
 export default class MyPlugin extends Plugin {
 	settings!: MyPluginSettings;
@@ -15,6 +16,7 @@ export default class MyPlugin extends Plugin {
 		this.addSettingTab(new MdExportSettingTab(this.app, this));
 
 		new SendToChat(this);
+		new SendToChatRich(this);
 		new PostCreate(this);
 		new PostUpdate(this);
 

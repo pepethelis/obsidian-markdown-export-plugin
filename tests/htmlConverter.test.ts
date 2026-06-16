@@ -10,13 +10,21 @@ const mockApp = {
 } as unknown as App;
 
 describe("htmlConverter", () => {
-	test.concurrent("convertToHTML pipeline executes tokenizers and converters", () => {
-		const input = "# Hello\n\nThis is **bold** and *italic*. [[MissingLink]]";
-		const html = convertToHTML(input, "extLink", mockApp);
-		
-		expect(html).toContain("<b>Hello</b>");
-		expect(html).toContain("<b>bold</b>");
-		expect(html).toContain("<i>italic</i>");
-		expect(html).toContain("MissingLink⚠️🔗");
-	});
+	test.concurrent(
+		"convertToHTML pipeline executes tokenizers and converters",
+		() => {
+			const input =
+				"# Hello\n\nThis is **bold** and *italic*. [[MissingLink]]";
+			const html = convertToHTML({
+				content: input,
+				wikilinkExternalLinkField: "extLink",
+				app: mockApp,
+			});
+
+			expect(html).toContain("<b>Hello</b>");
+			expect(html).toContain("<b>bold</b>");
+			expect(html).toContain("<i>italic</i>");
+			expect(html).toContain("MissingLink⚠️🔗");
+		},
+	);
 });
