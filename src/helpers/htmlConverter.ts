@@ -1,8 +1,8 @@
 import { App } from "obsidian";
 import { tokenizeMethods } from "./tokenizers";
-import { convertWikilinks } from "./converters";
+import { convertWikilinks, convertLineBreaks, escapeHtmlForTelegram } from "./converters";
 
-const pipline = [convertWikilinks, ...tokenizeMethods];
+const pipline = [convertWikilinks, convertLineBreaks, escapeHtmlForTelegram, ...tokenizeMethods];
 
 export const convertToHTML = (params: {
 	content: string,

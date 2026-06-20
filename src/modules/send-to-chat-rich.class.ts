@@ -10,7 +10,7 @@ export class SendToChatRich {
 
 		plugin
 			.addRibbonIcon(
-				"dice",
+				"bot",
 				"Send to Telegram Chat (Use rich text)",
 				async () => {
 					const { chatId } = plugin.settings;

@@ -1,5 +1,5 @@
 import { App } from "obsidian";
-import { convertWikilinks } from "./converters";
+import { convertWikilinks, convertLineBreaks, escapeHtmlForTelegram } from "./converters";
 
 
 const covertHashTags = (params: { input: string }): string => {
@@ -17,7 +17,7 @@ export const convertToTgMd = (params: {
 	isRich?: boolean
 }) => {
 	const { content, wikilinkExternalLinkField, app, isRich = false } = params;
-	const result = [convertWikilinks, covertHashTags].reduce(
+	const result = [convertWikilinks, convertLineBreaks, escapeHtmlForTelegram, covertHashTags].reduce(
 		(text, method) => method({ input: text, app, wikilinkExternalLinkField, isRich }),
 		content
 	);
