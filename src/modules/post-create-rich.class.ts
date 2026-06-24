@@ -1,5 +1,5 @@
 import { App, Notice, Modal, Setting, MarkdownView } from "obsidian";
-import { convertToHTML } from "../helpers/htmlConverter";
+import { convertToTgMd } from "../helpers/mdConverter";
 import { buildFooter } from "../helpers/footerBuilder";
 import MyPlugin from "../plugin.class";
 
@@ -44,15 +44,15 @@ class ReplyLinkModal extends Modal {
 	}
 }
 
-export class PostCreate {
+export class PostCreateRich {
 	private plugin: MyPlugin;
 
 	constructor(plugin: MyPlugin) {
 		this.plugin = plugin;
 
 		plugin.addRibbonIcon(
-			"arrow-up-right",
-			"Send Telegram Post",
+			"share-2",
+			"Send Telegram Post (Rich text)",
 			async () => {
 				const { botToken, externalLinkField } = plugin.settings;
 				if (!botToken) {
@@ -77,7 +77,7 @@ export class PostCreate {
 				const file = activeView.file;
 				if (!file) return;
 
-				const footer = buildFooter(plugin.app, file, plugin.settings);
+				const footer = buildFooter(plugin.app, file, plugin.settings, "md");
 				const postLink = await this.exec(page, footer);
 
 				if (!postLink) {
@@ -148,11 +148,11 @@ export class PostCreate {
 		);
 
 		const converted =
-			convertToHTML({
+			convertToTgMd({
 				content: message,
 				app,
 				wikilinkExternalLinkField: externalLinkField,
-				isRich: false,
+				isRich: true,
 			}) + footer;
 
 		if (!botToken || !channelUsername) {
@@ -191,9 +191,7 @@ export class PostCreate {
 
 		const bodyPayload: Record<string, unknown> = {
 			chat_id: chatId,
-			text: converted,
-			parse_mode: "HTML",
-			disable_web_page_preview: true,
+			rich_message: { markdown: converted },
 		};
 
 		if (replyToMessageId) {
@@ -201,7 +199,7 @@ export class PostCreate {
 		}
 
 		const response = await fetch(
-			`https://api.telegram.org/bot${botToken}/sendMessage`,
+			`https://api.telegram.org/bot${botToken}/sendRichMessage`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },

@@ -1,17 +1,17 @@
 import { Notice, MarkdownView } from "obsidian";
-import { convertToHTML } from "../helpers/htmlConverter";
+import { convertToTgMd } from "../helpers/mdConverter";
 import { buildFooter } from "../helpers/footerBuilder";
 import MyPlugin from "../plugin.class";
 
-export class PostUpdate {
+export class PostUpdateRich {
 	private plugin: MyPlugin;
 
 	constructor(plugin: MyPlugin) {
 		this.plugin = plugin;
 
 		plugin.addRibbonIcon(
-			"refresh-ccw-dot",
-			"Update Telegram Post",
+			"pencil-line",
+			"Update Telegram Post (Rich text)",
 			async () => {
 				const { botToken, externalLinkField } = plugin.settings;
 				if (!botToken) {
@@ -44,7 +44,7 @@ export class PostUpdate {
 					return;
 				}
 
-				const footer = buildFooter(plugin.app, file, plugin.settings);
+				const footer = buildFooter(plugin.app, file, plugin.settings, "md");
 				const result = await this.exec(tgPostLink, page, footer);
 
 				if (result) {
@@ -80,11 +80,11 @@ export class PostUpdate {
 		);
 
 		const converted =
-			convertToHTML({
+			convertToTgMd({
 				content: message,
 				app,
 				wikilinkExternalLinkField: externalLinkField,
-				isRich: false,
+				isRich: true,
 			}) + footer;
 
 		if (!botToken) {
@@ -123,16 +123,14 @@ export class PostUpdate {
 		}
 
 		const response = await fetch(
-			`https://api.telegram.org/bot${botToken}/editMessageText`,
+			`https://api.telegram.org/bot${botToken}/editRichMessage`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					chat_id: chatId,
 					message_id: messageId,
-					text: converted,
-					parse_mode: "HTML",
-					disable_web_page_preview: true,
+					rich_message: { markdown: converted },
 				}),
 			},
 		);

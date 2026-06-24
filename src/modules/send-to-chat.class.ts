@@ -1,5 +1,6 @@
 import { MarkdownView, Notice, Editor } from "obsidian";
 import { convertToHTML } from "../helpers/htmlConverter";
+import { buildFooter } from "../helpers/footerBuilder";
 import MyPlugin from "../plugin.class";
 
 export class SendToChat {
@@ -29,8 +30,12 @@ export class SendToChat {
 					return;
 				}
 
+				const footer = activeView.file
+					? buildFooter(plugin.app, activeView.file, plugin.settings)
+					: "";
+
 				if (page) {
-					await this.exec(page);
+					await this.exec(page, footer);
 				}
 			})
 			.addClass("my-plugin-ribbon-class");
@@ -61,8 +66,14 @@ export class SendToChat {
 					return;
 				}
 
+				const file =
+					plugin.app.workspace.getActiveViewOfType(MarkdownView)?.file;
+				const footer = file
+					? buildFooter(plugin.app, file, plugin.settings)
+					: "";
+
 				if (page) {
-					await this.exec(page);
+					await this.exec(page, footer);
 				}
 			},
 		});
@@ -74,18 +85,19 @@ export class SendToChat {
 	 * @param settings - The plugin settings.
 	 * @param app - The Obsidian application instance.
 	 */
-	async exec(message: string) {
+	async exec(message: string, footer = "") {
 		const { chatId, externalLinkField } = this.plugin.settings;
 		const app = this.plugin.app;
 
 		const botToken = await app.secretStorage.getSecret(this.plugin.settings.botToken);
 
-		const converted = convertToHTML({
-			content: message,
-			app,
-			wikilinkExternalLinkField: externalLinkField,
-			isRich: false,
-		});
+		const converted =
+			convertToHTML({
+				content: message,
+				app,
+				wikilinkExternalLinkField: externalLinkField,
+				isRich: false,
+			}) + footer;
 
 		if (!botToken || !chatId) {
 			new Notice("Please set bot token and chat ID in settings.");

@@ -6,6 +6,8 @@ import { SendToChat } from "./modules/send-to-chat.class";
 import { PostCreate } from "./modules/post-create.class";
 import { PostUpdate } from "./modules/post-update.class";
 import { SendToChatRich } from "./modules/send-to-chat-rich.class";
+import { PostCreateRich } from "./modules/post-create-rich.class";
+import { PostUpdateRich } from "./modules/post-update-rich.class";
 
 export default class MyPlugin extends Plugin {
 	settings!: MyPluginSettings;
@@ -19,6 +21,8 @@ export default class MyPlugin extends Plugin {
 		new SendToChatRich(this);
 		new PostCreate(this);
 		new PostUpdate(this);
+		new PostCreateRich(this);
+		new PostUpdateRich(this);
 
 		this.isElementsAdded = true;
 	}

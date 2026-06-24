@@ -1,5 +1,6 @@
 import { MarkdownView, Notice, Editor } from "obsidian";
 import { convertToTgMd } from "../helpers/mdConverter";
+import { buildFooter } from "../helpers/footerBuilder";
 import MyPlugin from "../plugin.class";
 
 export class SendToChatRich {
@@ -32,8 +33,12 @@ export class SendToChatRich {
 						return;
 					}
 
+					const footer = activeView.file
+						? buildFooter(plugin.app, activeView.file, plugin.settings, "md")
+						: "";
+
 					if (page) {
-						await this.exec(page);
+						await this.exec(page, footer);
 					}
 				},
 			)
@@ -65,8 +70,14 @@ export class SendToChatRich {
 					return;
 				}
 
+				const file =
+					plugin.app.workspace.getActiveViewOfType(MarkdownView)?.file;
+				const footer = file
+					? buildFooter(plugin.app, file, plugin.settings, "md")
+					: "";
+
 				if (page) {
-					await this.exec(page);
+					await this.exec(page, footer);
 				}
 			},
 		});
@@ -78,7 +89,7 @@ export class SendToChatRich {
 	 * @param settings - The plugin settings.
 	 * @param app - The Obsidian application instance.
 	 */
-	async exec(message: string) {
+	async exec(message: string, footer = "") {
 		const { chatId, externalLinkField } = this.plugin.settings;
 		const app = this.plugin.app;
 
@@ -86,12 +97,13 @@ export class SendToChatRich {
 			this.plugin.settings.botToken,
 		);
 
-		const converted = convertToTgMd({
-			content: message,
-			wikilinkExternalLinkField: externalLinkField,
-			app,
-			isRich: true,
-		});
+		const converted =
+			convertToTgMd({
+				content: message,
+				wikilinkExternalLinkField: externalLinkField,
+				app,
+				isRich: true,
+			}) + footer;
 
 		if (!botToken || !chatId) {
 			new Notice("Please set bot token and chat ID in settings.");
