@@ -10,3 +10,25 @@ If your plugin does not need CSS, delete this file.
 .my-plugin-ribbon-class {
 	/* background-color: #0001; */
 }
+
+/* Export settings modal */
+.md-export-modal h2 {
+	margin-bottom: 0.75em;
+}
+
+.md-export-modal .setting-item-heading {
+	margin-top: 1.5em;
+	padding-top: 0.75em;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.md-export-section-items {
+	padding-left: 1em;
+}
+
+.md-export-hashtag,
+.md-export-actions {
+	margin-top: 1.5em;
+	padding-top: 0.75em;
+	border-top: 1px solid var(--background-modifier-border);
+}

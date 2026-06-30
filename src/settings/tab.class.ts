@@ -120,5 +120,18 @@ export class MdExportSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+		
+		new Setting(containerEl)
+			.setName("Final Hashtag")
+			.setDesc("The hashtag to include in the exported content")
+			.addText((text) =>
+				text
+					.setPlaceholder("e.g. '#огляди'")
+					.setValue(this.plugin.settings.finalHashtag)
+					.onChange(async (value) => {
+						this.plugin.settings.finalHashtag = value;
+						await this.plugin.saveSettings();
+					}),
+			);
 	}
 }

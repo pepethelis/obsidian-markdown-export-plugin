@@ -9,4 +9,5 @@ export const DEFAULT_SETTINGS: MyPluginSettings = {
 	statusField: "",
 	publishedStatusValue: "",
 	channelUsername: "",
+	finalHashtag: "#огляди",
 };
