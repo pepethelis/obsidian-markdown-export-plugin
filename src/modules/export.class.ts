@@ -1,11 +1,12 @@
 import { MarkdownView, Notice, TFile } from "obsidian";
-import { convertToHTML } from "../helpers/htmlConverter";
-import { convertToTgMd } from "../helpers/mdConverter";
 import { buildFooterFromItems } from "../helpers/footerBuilder";
+import { resolveStoredFormat } from "../helpers/telegramFormat";
+import { buildTelegramRequest, TelegramRequest } from "../helpers/telegramRequest";
 import {
 	computeBrandRelated,
 	computeTasteRelated,
 	computeManualRelated,
+	scanOtherMarkdownFiles,
 } from "../helpers/relatedBuilder";
 import {
 	ExportSettingsModal,
@@ -72,8 +73,9 @@ export class Export {
 	private computeRelated(file: TFile | null) {
 		const { app, settings } = this.plugin;
 		if (!file) return { brandLabel: "", brandItems: [], tasteItems: [], manualItems: [] };
-		const { label: brandLabel, items: brandItems } = computeBrandRelated(app, file, settings);
-		const tasteItems = computeTasteRelated(app, file, settings);
+		const candidates = scanOtherMarkdownFiles(app, file);
+		const { label: brandLabel, items: brandItems } = computeBrandRelated(app, file, settings, candidates);
+		const tasteItems = computeTasteRelated(app, file, settings, candidates);
 		const manualItems = computeManualRelated(app, file, settings);
 		return { brandLabel, brandItems, tasteItems, manualItems };
 	}
@@ -200,6 +202,10 @@ export class Export {
 			await app.fileManager.processFrontMatter(file, (fm) => {
 				fm[settings.statusField] = settings.publishedStatusValue;
 			});
+		} else if (settings.statusField && !settings.publishedStatusValue) {
+			new Notice(
+				"Status field is set but published status value is empty. Please set published status value in settings to update the status field.",
+			);
 		}
 		await app.fileManager.processFrontMatter(file, (fm) => {
 			fm["telegram_format"] = options.format;
@@ -232,9 +238,12 @@ export class Export {
 		page = page.replace(FRONTMATTER_RE, "").trim();
 		if (!page) { new Notice("Please write something to send."); return; }
 
-		const rawFormat = cache?.frontmatter?.["telegram_format"];
-		const storedFormat: "html" | "md" | undefined =
-			rawFormat === "html" || rawFormat === "md" ? rawFormat : undefined;
+		const storedFormat = resolveStoredFormat(cache?.frontmatter?.["telegram_format"]);
+		if (!storedFormat) {
+			new Notice(
+				"This post has no saved format (it may predate format tracking) — please verify Classic vs Rich text matches how it was originally sent before updating.",
+			);
+		}
 
 		const { brandLabel, brandItems, tasteItems, manualItems } =
 			this.computeRelated(file);
@@ -263,35 +272,23 @@ export class Export {
 
 	// ── network ────────────────────────────────────────────────────────────
 
+	private sendTelegramRequest(request: TelegramRequest): Promise<Response> {
+		return fetch(request.url, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(request.body),
+		});
+	}
+
 	private async exec(message: string, footer: string, format: "html" | "md", botToken: string) {
 		const { chatId, externalLinkField } = this.plugin.settings;
 		const app = this.plugin.app;
 
-		let response: Response;
-
-		if (format === "md") {
-			const converted =
-				convertToTgMd({ content: message, wikilinkExternalLinkField: externalLinkField, app, isRich: true }) + footer;
-			response = await fetch(
-				`https://api.telegram.org/bot${botToken}/sendRichMessage`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ chat_id: chatId, rich_message: { markdown: converted }, disable_web_page_preview: true }),
-				},
-			);
-		} else {
-			const converted =
-				convertToHTML({ content: message, app, wikilinkExternalLinkField: externalLinkField, isRich: false }) + footer;
-			response = await fetch(
-				`https://api.telegram.org/bot${botToken}/sendMessage`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ chat_id: chatId, text: converted, parse_mode: "HTML", disable_web_page_preview: true }),
-				},
-			);
-		}
+		const request = buildTelegramRequest(
+			{ message, footer, format, app, wikilinkExternalLinkField: externalLinkField },
+			{ botToken, operation: "send", chatId },
+		);
+		const response = await this.sendTelegramRequest(request);
 
 		if (response.ok) {
 			new Notice("Message sent to Telegram ✅");
@@ -328,31 +325,11 @@ export class Export {
 				? channelUsername
 				: `@${channelUsername}`;
 
-		let response: Response;
-
-		if (format === "md") {
-			const converted =
-				convertToTgMd({ content: message, wikilinkExternalLinkField: externalLinkField, app, isRich: true }) + footer;
-			const body: Record<string, unknown> = {
-				chat_id: chatId,
-				rich_message: { markdown: converted },
-				disable_web_page_preview: true,
-			};
-			if (replyToMessageId) body.reply_to_message_id = replyToMessageId;
-			response = await fetch(
-				`https://api.telegram.org/bot${botToken}/sendRichMessage`,
-				{ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
-			);
-		} else {
-			const converted =
-				convertToHTML({ content: message, app, wikilinkExternalLinkField: externalLinkField, isRich: false }) + footer;
-			const body: Record<string, unknown> = { chat_id: chatId, text: converted, parse_mode: "HTML", disable_web_page_preview: true };
-			if (replyToMessageId) body.reply_to_message_id = replyToMessageId;
-			response = await fetch(
-				`https://api.telegram.org/bot${botToken}/sendMessage`,
-				{ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
-			);
-		}
+		const request = buildTelegramRequest(
+			{ message, footer, format, app, wikilinkExternalLinkField: externalLinkField },
+			{ botToken, operation: "send", chatId, replyToMessageId },
+		);
+		const response = await this.sendTelegramRequest(request);
 
 		if (response.ok) {
 			const json = await response.json();
@@ -396,31 +373,11 @@ export class Export {
 			messageId = parseInt(m[2], 10);
 		}
 
-		let response: Response;
-
-		if (format === "md") {
-			const converted =
-				convertToTgMd({ content: message, wikilinkExternalLinkField: externalLinkField, app, isRich: true }) + footer;
-			response = await fetch(
-				`https://api.telegram.org/bot${botToken}/editRichMessage`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ chat_id: chatId, message_id: messageId, rich_message: { markdown: converted } }),
-				},
-			);
-		} else {
-			const converted =
-				convertToHTML({ content: message, app, wikilinkExternalLinkField: externalLinkField, isRich: false }) + footer;
-			response = await fetch(
-				`https://api.telegram.org/bot${botToken}/editMessageText`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: converted, parse_mode: "HTML", disable_web_page_preview: true }),
-				},
-			);
-		}
+		const request = buildTelegramRequest(
+			{ message, footer, format, app, wikilinkExternalLinkField: externalLinkField },
+			{ botToken, operation: "edit", chatId, messageId },
+		);
+		const response = await this.sendTelegramRequest(request);
 
 		if (response.ok) {
 			new Notice("Post updated ✅");

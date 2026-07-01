@@ -85,6 +85,22 @@ describe("buildFooterFromItems — hashtag only", () => {
 		const result = buildFooterFromItems(options, "", baseSettings);
 		expect(result).toContain("---");
 	});
+
+	test("HTML: hashtag containing & is escaped to &amp;", () => {
+		const settings = { ...baseSettings, finalHashtag: "#a&b" };
+		const options = makeOptions({ includeHashtag: true });
+		const result = buildFooterFromItems(options, "", settings);
+		expect(result).toContain("#a&amp;b");
+		expect(result).not.toContain("#a&b");
+	});
+
+	test("HTML: hashtag containing < is escaped to &lt;", () => {
+		const settings = { ...baseSettings, finalHashtag: "#<script>" };
+		const options = makeOptions({ includeHashtag: true });
+		const result = buildFooterFromItems(options, "", settings);
+		expect(result).toContain("#&lt;script&gt;");
+		expect(result).not.toContain("#<script>");
+	});
 });
 
 // ── URL encoding in HTML hrefs ────────────────────────────────────────────

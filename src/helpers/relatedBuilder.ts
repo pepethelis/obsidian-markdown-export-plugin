@@ -1,17 +1,35 @@
 import { App, TFile } from "obsidian";
 import { MyPluginSettings, RelatedItem } from "../types";
 
+export interface FileWithFrontmatter {
+	file: TFile;
+	frontmatter: Record<string, unknown>;
+}
+
+export function scanOtherMarkdownFiles(
+	app: App,
+	file: TFile,
+): FileWithFrontmatter[] {
+	return app.vault.getMarkdownFiles().flatMap((f) => {
+		if (f.path === file.path) return [];
+		const frontmatter = app.metadataCache.getFileCache(f)?.frontmatter;
+		if (!frontmatter) return [];
+		return [{ file: f, frontmatter }];
+	});
+}
+
 export function computeBrandRelated(
 	app: App,
 	file: TFile,
 	settings: MyPluginSettings,
+	candidates: FileWithFrontmatter[] = scanOtherMarkdownFiles(app, file),
 ): { label: string; items: RelatedItem[] } {
 	const { externalLinkField } = settings;
 	if (!externalLinkField) return { label: "", items: [] };
 
 	const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
-	const currentBrand: string | undefined = frontmatter?.["brand"];
-	if (!currentBrand) return { label: "", items: [] };
+	const currentBrand: unknown = frontmatter?.["brand"];
+	if (!currentBrand || typeof currentBrand !== "string") return { label: "", items: [] };
 
 	const slashIdx = currentBrand.indexOf("/");
 	const hasSub = slashIdx >= 0;
@@ -35,12 +53,8 @@ export function computeBrandRelated(
 		return 2;
 	};
 
-	const items = app.vault
-		.getMarkdownFiles()
-		.flatMap((f) => {
-			if (f.path === file.path) return [];
-			const fm = app.metadataCache.getFileCache(f)?.frontmatter;
-			if (!fm) return [];
+	const items = candidates
+		.flatMap(({ file: f, frontmatter: fm }) => {
 			const brand = fm["brand"];
 			if (!brand || typeof brand !== "string") return [];
 			if (!matchesFamily(brand)) return [];
@@ -59,6 +73,7 @@ export function computeTasteRelated(
 	app: App,
 	file: TFile,
 	settings: MyPluginSettings,
+	candidates: FileWithFrontmatter[] = scanOtherMarkdownFiles(app, file),
 ): RelatedItem[] {
 	const { externalLinkField } = settings;
 	if (!externalLinkField) return [];
@@ -71,12 +86,8 @@ export function computeTasteRelated(
 		? currentTaste.map(String)
 		: [String(currentTaste)];
 
-	return app.vault
-		.getMarkdownFiles()
-		.flatMap((f) => {
-			if (f.path === file.path) return [];
-			const fm = app.metadataCache.getFileCache(f)?.frontmatter;
-			if (!fm) return [];
+	return candidates
+		.flatMap(({ file: f, frontmatter: fm }) => {
 			const otherTaste = fm["taste"];
 			if (!otherTaste) return [];
 			const url = fm[externalLinkField];

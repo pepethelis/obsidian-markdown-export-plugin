@@ -66,7 +66,7 @@ export function buildFooterFromItems(
 		parts.unshift("\n---\n");
 	} else {
 		if (hasHashtag) {
-			parts.push(settings.finalHashtag);
+			parts.push(escapeHtmlPreserveEntities(settings.finalHashtag));
 		}
 	}
 

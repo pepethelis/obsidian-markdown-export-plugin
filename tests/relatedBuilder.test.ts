@@ -76,6 +76,22 @@ describe("computeBrandRelated", () => {
 		expect(result).toEqual({ label: "", items: [] });
 	});
 
+	test("returns empty (does not throw) when brand is a non-string value", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { brand: 42 as unknown as string } },
+		]);
+		expect(() => computeBrandRelated(app, currentFile, settings)).not.toThrow();
+		const result = computeBrandRelated(app, currentFile, settings);
+		expect(result).toEqual({ label: "", items: [] });
+	});
+
+	test("returns empty (does not throw) when brand is a boolean value", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { brand: true as unknown as string } },
+		]);
+		expect(() => computeBrandRelated(app, currentFile, settings)).not.toThrow();
+	});
+
 	test("excludes the current file itself", () => {
 		const app = makeApp([
 			{ path: "current.md", basename: "current", frontmatter: { brand: "monster", link: "https://t.me/1" } },
