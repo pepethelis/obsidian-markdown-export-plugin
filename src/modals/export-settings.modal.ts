@@ -19,6 +19,18 @@ export class ExportSettingsModal extends Modal {
 	private submitted = false;
 	private resolve: (options: ExportOptions | null) => void;
 
+	// iOS keyboards cover the bottom of the modal without resizing the layout
+	// viewport the modal is centered in, so we shrink/reposition it manually
+	// to fit whatever visualViewport area remains above the keyboard.
+	private readonly onViewportResize = () => {
+		const vv = window.visualViewport;
+		if (!vv) return;
+		this.containerEl.style.top = `${vv.offsetTop}px`;
+		this.containerEl.style.height = `${vv.height}px`;
+		this.containerEl.style.bottom = "auto";
+		this.modalEl.style.maxHeight = `${vv.height - 40}px`;
+	};
+
 	constructor(
 		app: App,
 		params: ModalParams,
@@ -53,6 +65,9 @@ export class ExportSettingsModal extends Modal {
 
 		contentEl.addClass("md-export-modal");
 		contentEl.createEl("h2", { text: title });
+
+		window.visualViewport?.addEventListener("resize", this.onViewportResize);
+		window.visualViewport?.addEventListener("scroll", this.onViewportResize);
 
 		new Setting(contentEl).setName("Format").addDropdown((dd) =>
 			dd
@@ -157,6 +172,12 @@ export class ExportSettingsModal extends Modal {
 	}
 
 	onClose() {
+		window.visualViewport?.removeEventListener("resize", this.onViewportResize);
+		window.visualViewport?.removeEventListener("scroll", this.onViewportResize);
+		this.containerEl.style.top = "";
+		this.containerEl.style.height = "";
+		this.containerEl.style.bottom = "";
+		this.modalEl.style.maxHeight = "";
 		if (!this.submitted) {
 			this.resolve(null);
 		}
