@@ -63,8 +63,8 @@ convertWikilinks → convertLineBreaks → insertDividers → escapeHtmlForTeleg
 **`escapers.ts`** — low-level string escape utilities used inside the pipeline.
 
 **`relatedBuilder.ts`** — computes the three "related notes" sections shown (and toggleable) in the export modal. `scanOtherMarkdownFiles(app, file)` does a single vault pass (all other markdown files + their frontmatter) shared across the brand/taste computations to avoid scanning twice:
-- `computeBrandRelated`: notes sharing the current note's `brand` frontmatter value (supports `parent/child` brand naming — matches exact brand, then sibling sub-brands, then the parent, in that tier order), capped at 10 items
-- `computeTasteRelated`: notes sharing any `taste` frontmatter value (string or array) with the current note, capped at 10 items
+- `computeBrandRelated`: notes sharing the current note's `brand` frontmatter value (supports `parent/child` brand naming — matches exact brand, then sibling sub-brands, then the parent, in that tier order; within each tier, notes whose `types` frontmatter array is exactly the same set as the current note's are listed before others and left enabled, while notes with a different type set are included but default to `enabled: false` — e.g. a pure `[energy]` note treats a hybrid `[alco, energy]` note as a different type, not a match; if the current note has no `types`, all items default to enabled), capped at 10 items
+- `computeTasteRelated`: notes sharing any `taste` frontmatter value (string or array) with the current note, with notes whose `types` frontmatter array exactly matches the current note's listed before others, capped at 10 items
 - `computeManualRelated`: notes listed in the current note's `related` frontmatter field (resolves `[[wikilinks]]`, `[[Note|Alias]]`, `[[Note#Section]]`, and plain note names)
 
 All three only include notes with a non-empty `externalLinkField` value (the published Telegram link).

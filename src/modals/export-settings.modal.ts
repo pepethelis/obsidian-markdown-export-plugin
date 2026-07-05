@@ -94,14 +94,21 @@ export class ExportSettingsModal extends Modal {
 			new Setting(contentEl)
 				.setName("Reply to post")
 				.setDesc("Telegram post link to reply to (optional)")
-				.addText((t) =>
-					t
-						.setPlaceholder("https://t.me/…")
+				.addText((t) => {
+					t.setPlaceholder("https://t.me/…")
 						.setValue(this.options.replyLink)
 						.onChange((v) => {
 							this.options.replyLink = v;
-						}),
-				)
+						});
+					// iOS pushes the modal (and this field, near the bottom) behind the
+					// keyboard on focus without scrolling it back into view on its own.
+					t.inputEl.addEventListener("focus", () => {
+						setTimeout(
+							() => t.inputEl.scrollIntoView({ block: "center", behavior: "smooth" }),
+							300,
+						);
+					});
+				})
 				.settingEl.addClass("md-export-hashtag");
 		}
 

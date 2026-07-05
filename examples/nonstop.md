@@ -5,7 +5,8 @@ tags:
   - package/crown
 externalUrl: https://t.me/kallection/31717
 brand: nonstop
-type: energy
+types:
+  - energy
 taste:
   - CLASSIC
 favorite: true

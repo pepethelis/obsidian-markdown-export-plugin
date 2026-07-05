@@ -3,7 +3,8 @@ status: to publish
 tags:
 externalUrl:
 brand: beer mix
-type: alco
+types:
+  - alco
 taste:
   - coconut
 postedAt:

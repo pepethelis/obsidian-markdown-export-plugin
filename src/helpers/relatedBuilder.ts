@@ -6,6 +6,17 @@ export interface FileWithFrontmatter {
 	frontmatter: Record<string, unknown>;
 }
 
+function toStringArray(value: unknown): string[] {
+	if (Array.isArray(value)) return value.map(String);
+	if (value === undefined || value === null || value === "") return [];
+	return [String(value)];
+}
+
+function sameTypeSet(a: string[], b: string[]): boolean {
+	if (a.length !== b.length) return false;
+	return a.every((t) => b.includes(t));
+}
+
 export function scanOtherMarkdownFiles(
 	app: App,
 	file: TFile,
@@ -53,6 +64,10 @@ export function computeBrandRelated(
 		return 2;
 	};
 
+	const currentTypes = toStringArray(frontmatter?.["types"]);
+	const isSameType = (types: unknown): boolean =>
+		currentTypes.length === 0 || sameTypeSet(currentTypes, toStringArray(types));
+
 	const items = candidates
 		.flatMap(({ file: f, frontmatter: fm }) => {
 			const brand = fm["brand"];
@@ -60,11 +75,19 @@ export function computeBrandRelated(
 			if (!matchesFamily(brand)) return [];
 			const url = fm[externalLinkField];
 			if (!url || typeof url !== "string" || !url.trim()) return [];
-			return [{ url: url.trim(), name: f.basename, brand }];
+			return [{ url: url.trim(), name: f.basename, brand, types: fm["types"] }];
 		})
-		.sort((a, b) => sortScore(a.brand) - sortScore(b.brand))
+		.sort(
+			(a, b) =>
+				sortScore(a.brand) - sortScore(b.brand) ||
+				Number(!isSameType(a.types)) - Number(!isSameType(b.types)),
+		)
 		.slice(0, 10)
-		.map(({ url, name }) => ({ url, name, enabled: true }));
+		.map(({ url, name, types }) => ({
+			url,
+			name,
+			enabled: isSameType(types),
+		}));
 
 	return { label: currentBrand, items };
 }
@@ -86,6 +109,10 @@ export function computeTasteRelated(
 		? currentTaste.map(String)
 		: [String(currentTaste)];
 
+	const currentTypes = toStringArray(frontmatter?.["types"]);
+	const isSameType = (types: unknown): boolean =>
+		currentTypes.length === 0 || sameTypeSet(currentTypes, toStringArray(types));
+
 	return candidates
 		.flatMap(({ file: f, frontmatter: fm }) => {
 			const otherTaste = fm["taste"];
@@ -96,9 +123,14 @@ export function computeTasteRelated(
 				? otherTaste.map(String)
 				: [String(otherTaste)];
 			if (!tastes.some((t) => otherTastes.includes(t))) return [];
-			return [{ url: url.trim(), name: f.basename, enabled: true }];
+			return [{ url: url.trim(), name: f.basename, types: fm["types"] }];
 		})
-		.slice(0, 10);
+		.sort(
+			(a, b) =>
+				Number(!isSameType(a.types)) - Number(!isSameType(b.types)),
+		)
+		.slice(0, 10)
+		.map(({ url, name }) => ({ url, name, enabled: true }));
 }
 
 export function computeManualRelated(

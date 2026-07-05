@@ -14,6 +14,7 @@ interface MockFrontmatter {
 	taste?: string | string[];
 	related?: string | string[];
 	link?: string;
+	types?: string | string[];
 }
 
 interface MockFile {
@@ -122,7 +123,7 @@ describe("computeBrandRelated", () => {
 		const app = makeApp([
 			{ path: "current.md", basename: "current", frontmatter: { brand: "monster/ultra" } },
 			{ path: "parent.md", basename: "parent", frontmatter: { brand: "monster", link: "https://t.me/parent" } },
-			{ path: "sibling.md", basename: "sibling", frontmatter: { brand: "monster/zero", link: "https://t.me/sibling" } },
+			{ path: "sibling.md", basename: "sibling", frontmatter: { brand: "monster/juiced", link: "https://t.me/sibling" } },
 			{ path: "exact.md", basename: "exact", frontmatter: { brand: "monster/ultra", link: "https://t.me/exact" } },
 		]);
 		const result = computeBrandRelated(app, currentFile, settings);
@@ -173,6 +174,75 @@ describe("computeBrandRelated", () => {
 		]);
 		const result = computeBrandRelated(app, currentFile, settings);
 		expect(result.items[0].url).toBe("https://t.me/1");
+	});
+
+	test("within the same tier, same-type items are preferred over other types", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { brand: "monster", types: ["energy"] } },
+			{ path: "othertype.md", basename: "othertype", frontmatter: { brand: "monster/ultra", link: "https://t.me/othertype", types: ["alco"] } },
+			{ path: "sametype.md", basename: "sametype", frontmatter: { brand: "monster/juiced", link: "https://t.me/sametype", types: ["energy"] } },
+		]);
+		const result = computeBrandRelated(app, currentFile, settings);
+		expect(result.items.map((i) => i.name)).toEqual(["sametype", "othertype"]);
+	});
+
+	test("other-type items of the same brand are disabled by default; same-type stay enabled", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { brand: "bronx/zero", types: ["energy"] } },
+			{ path: "othertype.md", basename: "othertype", frontmatter: { brand: "bronx", link: "https://t.me/othertype", types: ["alco"] } },
+			{ path: "sametype.md", basename: "sametype", frontmatter: { brand: "bronx/zero", link: "https://t.me/sametype", types: ["energy"] } },
+			{ path: "othertype2.md", basename: "othertype2", frontmatter: { brand: "bronx", link: "https://t.me/othertype2", types: ["alco"] } },
+		]);
+		const result = computeBrandRelated(app, currentFile, settings);
+		expect(result.items.find((i) => i.name === "sametype")?.enabled).toBe(true);
+		expect(result.items.find((i) => i.name === "othertype")?.enabled).toBe(false);
+	});
+
+	test("does not disable items when the current note has no type", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { brand: "bronx/zero" } },
+			{ path: "other.md", basename: "other", frontmatter: { brand: "bronx/zero", link: "https://t.me/1", types: ["alco"] } },
+		]);
+		const result = computeBrandRelated(app, currentFile, settings);
+		expect(result.items[0].enabled).toBe(true);
+	});
+
+	test("brand tier still outranks type match", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { brand: "monster/ultra", types: ["energy"] } },
+			{ path: "sibling-othertype.md", basename: "sibling-othertype", frontmatter: { brand: "monster/juiced", link: "https://t.me/sibling", types: ["alco"] } },
+			{ path: "exact-othertype.md", basename: "exact-othertype", frontmatter: { brand: "monster/ultra", link: "https://t.me/exact", types: ["alco"] } },
+		]);
+		const result = computeBrandRelated(app, currentFile, settings);
+		expect(result.items.map((i) => i.name)).toEqual(["exact-othertype", "sibling-othertype"]);
+	});
+
+	test("multi-value types: candidate must match the full type set, not just overlap", () => {
+		// regression: real vault notes use a `types` array (e.g. `bronx` alco-energy hybrids are
+		// `[alco, energy]` while `bronx/zero` is plain `[energy]`) — a hybrid sharing one value
+		// with a pure type is still a *different* drink type and must default to disabled.
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { brand: "bronx/zero", types: ["energy"] } },
+			{
+				path: "zero-sibling.md",
+				basename: "zero-sibling",
+				frontmatter: { brand: "bronx/zero", link: "https://t.me/zero-sibling", types: ["energy"] },
+			},
+			{
+				path: "hybrid.md",
+				basename: "hybrid",
+				frontmatter: { brand: "bronx", link: "https://t.me/hybrid", types: ["alco", "energy"] },
+			},
+			{
+				path: "pink.md",
+				basename: "pink",
+				frontmatter: { brand: "bronx/zero", link: "https://t.me/pink", types: ["alco"] },
+			},
+		]);
+		const result = computeBrandRelated(app, currentFile, settings);
+		expect(result.items.find((i) => i.name === "zero-sibling")?.enabled).toBe(true);
+		expect(result.items.find((i) => i.name === "hybrid")?.enabled).toBe(false);
+		expect(result.items.find((i) => i.name === "pink")?.enabled).toBe(false);
 	});
 });
 
@@ -258,6 +328,16 @@ describe("computeTasteRelated", () => {
 		]);
 		const result = computeTasteRelated(app, currentFile, settings);
 		expect(result[0].url).toBe("https://t.me/1");
+	});
+
+	test("prefers same-type matches over other types", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { taste: "sweet", types: ["energy"] } },
+			{ path: "othertype.md", basename: "othertype", frontmatter: { taste: "sweet", link: "https://t.me/othertype", types: ["alco"] } },
+			{ path: "sametype.md", basename: "sametype", frontmatter: { taste: "sweet", link: "https://t.me/sametype", types: ["energy"] } },
+		]);
+		const result = computeTasteRelated(app, currentFile, settings);
+		expect(result.map((i) => i.name)).toEqual(["sametype", "othertype"]);
 	});
 });
 

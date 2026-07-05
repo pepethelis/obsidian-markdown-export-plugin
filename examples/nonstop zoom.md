@@ -4,7 +4,8 @@ tags:
   - package/canpack
 externalUrl: https://t.me/kallection/30452
 brand: nonstop
-type: energy
+types:
+  - energy
 taste:
   - watermelon
 favorite: true
