@@ -3,6 +3,7 @@ import { App, TFile } from "obsidian";
 import {
 	computeBrandRelated,
 	computeTasteRelated,
+	computeAuthorRelated,
 	computeManualRelated,
 } from "../src/helpers/relatedBuilder";
 import { MyPluginSettings } from "../src/types";
@@ -12,6 +13,7 @@ import { MyPluginSettings } from "../src/types";
 interface MockFrontmatter {
 	brand?: string;
 	taste?: string | string[];
+	author?: string | string[];
 	related?: string | string[];
 	link?: string;
 	types?: string | string[];
@@ -337,6 +339,101 @@ describe("computeTasteRelated", () => {
 			{ path: "sametype.md", basename: "sametype", frontmatter: { taste: "sweet", link: "https://t.me/sametype", types: ["energy"] } },
 		]);
 		const result = computeTasteRelated(app, currentFile, settings);
+		expect(result.map((i) => i.name)).toEqual(["sametype", "othertype"]);
+	});
+});
+
+// ── computeAuthorRelated ──────────────────────────────────────────────────
+
+describe("computeAuthorRelated", () => {
+	test("returns empty when externalLinkField is unset", () => {
+		const app = makeApp([{ path: "current.md", basename: "current", frontmatter: {} }]);
+		const result = computeAuthorRelated(app, currentFile, { ...settings, externalLinkField: "" });
+		expect(result).toEqual([]);
+	});
+
+	test("returns empty when current file has no author", () => {
+		const app = makeApp([{ path: "current.md", basename: "current", frontmatter: {} }]);
+		const result = computeAuthorRelated(app, currentFile, settings);
+		expect(result).toEqual([]);
+	});
+
+	test("excludes the current file itself", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { author: "Ann", link: "https://t.me/cur" } },
+		]);
+		const result = computeAuthorRelated(app, currentFile, settings);
+		expect(result).toHaveLength(0);
+	});
+
+	test("matches file sharing any author value (array in current)", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { author: ["Ann", "Bob"] } },
+			{ path: "match.md", basename: "match", frontmatter: { author: "Ann", link: "https://t.me/match" } },
+			{ path: "nomatch.md", basename: "nomatch", frontmatter: { author: "Cid", link: "https://t.me/nm" } },
+		]);
+		const result = computeAuthorRelated(app, currentFile, settings);
+		expect(result).toHaveLength(1);
+		expect(result[0].name).toBe("match");
+	});
+
+	test("handles string author (not array) in current file", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { author: "Ann" } },
+			{ path: "match.md", basename: "match", frontmatter: { author: ["Ann", "Bob"], link: "https://t.me/m" } },
+		]);
+		const result = computeAuthorRelated(app, currentFile, settings);
+		expect(result).toHaveLength(1);
+	});
+
+	test("excludes files without link field", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { author: "Ann" } },
+			{ path: "nolink.md", basename: "nolink", frontmatter: { author: "Ann" } },
+		]);
+		const result = computeAuthorRelated(app, currentFile, settings);
+		expect(result).toHaveLength(0);
+	});
+
+	test("slices to 10 items maximum", () => {
+		const extras = Array.from({ length: 15 }, (_, i) => ({
+			path: `n${i}.md`,
+			basename: `n${i}`,
+			frontmatter: { author: "Ann", link: `https://t.me/${i}` },
+		}));
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { author: "Ann" } },
+			...extras,
+		]);
+		const result = computeAuthorRelated(app, currentFile, settings);
+		expect(result).toHaveLength(10);
+	});
+
+	test("all returned items have enabled: true", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { author: "Ann" } },
+			{ path: "other.md", basename: "other", frontmatter: { author: "Ann", link: "https://t.me/1" } },
+		]);
+		const result = computeAuthorRelated(app, currentFile, settings);
+		expect(result.every((i) => i.enabled)).toBe(true);
+	});
+
+	test("url is trimmed", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { author: "Ann" } },
+			{ path: "other.md", basename: "other", frontmatter: { author: "Ann", link: "  https://t.me/1  " } },
+		]);
+		const result = computeAuthorRelated(app, currentFile, settings);
+		expect(result[0].url).toBe("https://t.me/1");
+	});
+
+	test("prefers same-type matches over other types", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { author: "Ann", types: ["energy"] } },
+			{ path: "othertype.md", basename: "othertype", frontmatter: { author: "Ann", link: "https://t.me/othertype", types: ["alco"] } },
+			{ path: "sametype.md", basename: "sametype", frontmatter: { author: "Ann", link: "https://t.me/sametype", types: ["energy"] } },
+		]);
+		const result = computeAuthorRelated(app, currentFile, settings);
 		expect(result.map((i) => i.name)).toEqual(["sametype", "othertype"]);
 	});
 });

@@ -41,6 +41,15 @@ export function buildFooterFromItems(
 		}
 	}
 
+	if (options.authorRelated.enabled) {
+		const links = options.authorRelated.items
+			.filter((i) => i.enabled)
+			.map((i) => linkFn(i.url, i.name));
+		if (links.length > 0) {
+			parts.push(`Ще від автора: ${links.join(", ")}`);
+		}
+	}
+
 	if (options.manualRelated.enabled) {
 		const links = options.manualRelated.items
 			.filter((i) => i.enabled)

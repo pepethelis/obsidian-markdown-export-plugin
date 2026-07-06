@@ -23,6 +23,7 @@ function makeOptions(overrides: Partial<ExportOptions> = {}): ExportOptions {
 		replyLink: "",
 		brandRelated: noSection,
 		tasteRelated: noSection,
+		authorRelated: noSection,
 		manualRelated: noSection,
 		...overrides,
 	};
@@ -247,6 +248,17 @@ describe("buildFooterFromItems — section content", () => {
 		});
 		const result = buildFooterFromItems(options, "", baseSettings);
 		expect(result).toContain("Пов'язані огляди:");
+	});
+
+	test("author section uses 'Ще від автора:' label", () => {
+		const options = makeOptions({
+			authorRelated: {
+				enabled: true,
+				items: [item("https://t.me/1", "Item")],
+			},
+		});
+		const result = buildFooterFromItems(options, "", baseSettings);
+		expect(result).toContain("Ще від автора:");
 	});
 });
 

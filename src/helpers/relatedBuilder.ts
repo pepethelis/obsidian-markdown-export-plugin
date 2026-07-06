@@ -133,6 +133,47 @@ export function computeTasteRelated(
 		.map(({ url, name }) => ({ url, name, enabled: true }));
 }
 
+export function computeAuthorRelated(
+	app: App,
+	file: TFile,
+	settings: MyPluginSettings,
+	candidates: FileWithFrontmatter[] = scanOtherMarkdownFiles(app, file),
+): RelatedItem[] {
+	const { externalLinkField } = settings;
+	if (!externalLinkField) return [];
+
+	const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+	const currentAuthor = frontmatter?.["author"];
+	if (!currentAuthor) return [];
+
+	const authors: string[] = Array.isArray(currentAuthor)
+		? currentAuthor.map(String)
+		: [String(currentAuthor)];
+
+	const currentTypes = toStringArray(frontmatter?.["types"]);
+	const isSameType = (types: unknown): boolean =>
+		currentTypes.length === 0 || sameTypeSet(currentTypes, toStringArray(types));
+
+	return candidates
+		.flatMap(({ file: f, frontmatter: fm }) => {
+			const otherAuthor = fm["author"];
+			if (!otherAuthor) return [];
+			const url = fm[externalLinkField];
+			if (!url || typeof url !== "string" || !url.trim()) return [];
+			const otherAuthors: string[] = Array.isArray(otherAuthor)
+				? otherAuthor.map(String)
+				: [String(otherAuthor)];
+			if (!authors.some((a) => otherAuthors.includes(a))) return [];
+			return [{ url: url.trim(), name: f.basename, types: fm["types"] }];
+		})
+		.sort(
+			(a, b) =>
+				Number(!isSameType(a.types)) - Number(!isSameType(b.types)),
+		)
+		.slice(0, 10)
+		.map(({ url, name }) => ({ url, name, enabled: true }));
+}
+
 export function computeManualRelated(
 	app: App,
 	file: TFile,

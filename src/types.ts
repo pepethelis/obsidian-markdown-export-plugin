@@ -28,6 +28,7 @@ export interface ExportOptions {
 	includeHashtag: boolean;
 	brandRelated: RelatedSection;
 	tasteRelated: RelatedSection;
+	authorRelated: RelatedSection;
 	manualRelated: RelatedSection;
 	replyLink: string;
 }

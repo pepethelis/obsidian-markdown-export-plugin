@@ -9,6 +9,7 @@ export interface ModalParams {
 	brandLabel: string;
 	brandItems: RelatedSection["items"];
 	tasteItems: RelatedSection["items"];
+	authorItems: RelatedSection["items"];
 	manualItems: RelatedSection["items"];
 	defaultFormat?: "html" | "md";
 }
@@ -85,6 +86,10 @@ export class ExportSettingsModal extends Modal {
 				enabled: true,
 				items: params.tasteItems.map((i) => ({ ...i })),
 			},
+			authorRelated: {
+				enabled: true,
+				items: params.authorItems.map((i) => ({ ...i })),
+			},
 			manualRelated: {
 				enabled: true,
 				items: params.manualItems.map((i) => ({ ...i })),
@@ -118,6 +123,11 @@ export class ExportSettingsModal extends Modal {
 			this.options.brandRelated,
 		);
 		this.renderSection(contentEl, "Схожий смак", this.options.tasteRelated);
+		this.renderSection(
+			contentEl,
+			"Ще від автора",
+			this.options.authorRelated,
+		);
 		this.renderSection(
 			contentEl,
 			"Пов'язані огляди",
