@@ -8,6 +8,7 @@ export interface ModalParams {
 	finalHashtag: string;
 	brandLabel: string;
 	brandItems: RelatedSection["items"];
+	typeItems: RelatedSection["items"];
 	tasteItems: RelatedSection["items"];
 	authorItems: RelatedSection["items"];
 	manualItems: RelatedSection["items"];
@@ -82,6 +83,10 @@ export class ExportSettingsModal extends Modal {
 				enabled: true,
 				items: params.brandItems.map((i) => ({ ...i })),
 			},
+			typeRelated: {
+				enabled: true,
+				items: params.typeItems.map((i) => ({ ...i })),
+			},
 			tasteRelated: {
 				enabled: true,
 				items: params.tasteItems.map((i) => ({ ...i })),
@@ -119,19 +124,20 @@ export class ExportSettingsModal extends Modal {
 
 		this.renderSection(
 			contentEl,
+			"Пов'язані огляди",
+			this.options.manualRelated,
+		);
+		this.renderSection(
+			contentEl,
 			brandLabel ? `Більше ${brandLabel}` : "Brand related",
 			this.options.brandRelated,
 		);
+		this.renderSection(contentEl, "Схожий тип", this.options.typeRelated);
 		this.renderSection(contentEl, "Схожий смак", this.options.tasteRelated);
 		this.renderSection(
 			contentEl,
 			"Ще від автора",
 			this.options.authorRelated,
-		);
-		this.renderSection(
-			contentEl,
-			"Пов'язані огляди",
-			this.options.manualRelated,
 		);
 
 		if (finalHashtag) {

@@ -18,11 +18,27 @@ export function buildFooterFromItems(
 	const linkFn: LinkBuilder = format === "html" ? htmlLink : mdLink;
 	const sectionSep = format === "html" ? "\n" : "\n\n";
 	const parts: string[] = [];
+	const usedUrls = new Set<string>();
+
+	if (options.manualRelated.enabled) {
+		const links = options.manualRelated.items
+			.filter((i) => i.enabled)
+			.map((i) => {
+				usedUrls.add(i.url);
+				return linkFn(i.url, i.name);
+			});
+		if (links.length > 0) {
+			parts.push(`Пов'язані огляди: ${links.join(", ")}`);
+		}
+	}
 
 	if (options.brandRelated.enabled && brandLabel) {
 		const links = options.brandRelated.items
-			.filter((i) => i.enabled)
-			.map((i) => linkFn(i.url, i.name));
+			.filter((i) => i.enabled && !usedUrls.has(i.url))
+			.map((i) => {
+				usedUrls.add(i.url);
+				return linkFn(i.url, i.name);
+			});
 		if (links.length > 0) {
 			const label =
 				format === "html"
@@ -32,10 +48,25 @@ export function buildFooterFromItems(
 		}
 	}
 
+	if (options.typeRelated.enabled) {
+		const links = options.typeRelated.items
+			.filter((i) => i.enabled && !usedUrls.has(i.url))
+			.map((i) => {
+				usedUrls.add(i.url);
+				return linkFn(i.url, i.name);
+			});
+		if (links.length > 0) {
+			parts.push(`Схожий тип: ${links.join(", ")}`);
+		}
+	}
+
 	if (options.tasteRelated.enabled) {
 		const links = options.tasteRelated.items
-			.filter((i) => i.enabled)
-			.map((i) => linkFn(i.url, i.name));
+			.filter((i) => i.enabled && !usedUrls.has(i.url))
+			.map((i) => {
+				usedUrls.add(i.url);
+				return linkFn(i.url, i.name);
+			});
 		if (links.length > 0) {
 			parts.push(`Схожий смак: ${links.join(", ")}`);
 		}
@@ -47,15 +78,6 @@ export function buildFooterFromItems(
 			.map((i) => linkFn(i.url, i.name));
 		if (links.length > 0) {
 			parts.push(`Ще від автора: ${links.join(", ")}`);
-		}
-	}
-
-	if (options.manualRelated.enabled) {
-		const links = options.manualRelated.items
-			.filter((i) => i.enabled)
-			.map((i) => linkFn(i.url, i.name));
-		if (links.length > 0) {
-			parts.push(`Пов'язані огляди: ${links.join(", ")}`);
 		}
 	}
 

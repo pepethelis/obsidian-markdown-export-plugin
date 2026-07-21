@@ -22,6 +22,7 @@ function makeOptions(overrides: Partial<ExportOptions> = {}): ExportOptions {
 		includeHashtag: false,
 		replyLink: "",
 		brandRelated: noSection,
+		typeRelated: noSection,
 		tasteRelated: noSection,
 		authorRelated: noSection,
 		manualRelated: noSection,
@@ -259,6 +260,91 @@ describe("buildFooterFromItems — section content", () => {
 		});
 		const result = buildFooterFromItems(options, "", baseSettings);
 		expect(result).toContain("Ще від автора:");
+	});
+
+	test("type section uses 'Схожий тип:' label", () => {
+		const options = makeOptions({
+			typeRelated: {
+				enabled: true,
+				items: [item("https://t.me/1", "Item")],
+			},
+		});
+		const result = buildFooterFromItems(options, "", baseSettings);
+		expect(result).toContain("Схожий тип:");
+	});
+});
+
+// ── section order & cross-section deduplication ─────────────────────────────
+
+describe("buildFooterFromItems — order and deduplication", () => {
+	test("sections appear in order: manual, brand, type, taste, author", () => {
+		const options = makeOptions({
+			manualRelated: { enabled: true, items: [item("https://t.me/m", "M")] },
+			brandRelated: { enabled: true, items: [item("https://t.me/b", "B")] },
+			typeRelated: { enabled: true, items: [item("https://t.me/ty", "Ty")] },
+			tasteRelated: { enabled: true, items: [item("https://t.me/ta", "Ta")] },
+			authorRelated: { enabled: true, items: [item("https://t.me/a", "A")] },
+		});
+		const result = buildFooterFromItems(options, "Brand", baseSettings);
+		const manualIdx = result.indexOf("Пов'язані огляди:");
+		const brandIdx = result.indexOf("Більше Brand:");
+		const typeIdx = result.indexOf("Схожий тип:");
+		const tasteIdx = result.indexOf("Схожий смак:");
+		const authorIdx = result.indexOf("Ще від автора:");
+		expect(manualIdx).toBeGreaterThan(-1);
+		expect(manualIdx).toBeLessThan(brandIdx);
+		expect(brandIdx).toBeLessThan(typeIdx);
+		expect(typeIdx).toBeLessThan(tasteIdx);
+		expect(tasteIdx).toBeLessThan(authorIdx);
+	});
+
+	test("url already shown in manualRelated is excluded from brandRelated and tasteRelated", () => {
+		const shared = item("https://t.me/shared", "Shared");
+		const options = makeOptions({
+			manualRelated: { enabled: true, items: [shared] },
+			brandRelated: { enabled: true, items: [shared] },
+			tasteRelated: { enabled: true, items: [shared] },
+		});
+		const result = buildFooterFromItems(options, "Brand", baseSettings);
+		expect(result).not.toContain("Більше Brand:");
+		expect(result).not.toContain("Схожий смак:");
+		expect((result.match(/Shared/g) ?? []).length).toBe(1);
+	});
+
+	test("url already shown in brandRelated is excluded from typeRelated and tasteRelated", () => {
+		const shared = item("https://t.me/shared", "Shared");
+		const options = makeOptions({
+			brandRelated: { enabled: true, items: [shared] },
+			typeRelated: { enabled: true, items: [shared] },
+			tasteRelated: { enabled: true, items: [shared] },
+		});
+		const result = buildFooterFromItems(options, "Brand", baseSettings);
+		expect(result).toContain("Більше Brand:");
+		expect(result).not.toContain("Схожий тип:");
+		expect(result).not.toContain("Схожий смак:");
+	});
+
+	test("url already shown in typeRelated is excluded from tasteRelated", () => {
+		const shared = item("https://t.me/shared", "Shared");
+		const options = makeOptions({
+			typeRelated: { enabled: true, items: [shared] },
+			tasteRelated: { enabled: true, items: [shared] },
+		});
+		const result = buildFooterFromItems(options, "", baseSettings);
+		expect(result).toContain("Схожий тип:");
+		expect(result).not.toContain("Схожий смак:");
+	});
+
+	test("authorRelated is not deduplicated against earlier sections", () => {
+		const shared = item("https://t.me/shared", "Shared");
+		const options = makeOptions({
+			manualRelated: { enabled: true, items: [shared] },
+			authorRelated: { enabled: true, items: [shared] },
+		});
+		const result = buildFooterFromItems(options, "", baseSettings);
+		expect(result).toContain("Пов'язані огляди:");
+		expect(result).toContain("Ще від автора:");
+		expect((result.match(/Shared/g) ?? []).length).toBe(2);
 	});
 });
 

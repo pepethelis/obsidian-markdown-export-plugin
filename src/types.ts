@@ -30,5 +30,6 @@ export interface ExportOptions {
 	tasteRelated: RelatedSection;
 	authorRelated: RelatedSection;
 	manualRelated: RelatedSection;
+	typeRelated: RelatedSection;
 	replyLink: string;
 }

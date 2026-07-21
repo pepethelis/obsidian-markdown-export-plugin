@@ -62,19 +62,23 @@ convertWikilinks → convertLineBreaks → insertDividers → escapeHtmlForTeleg
 
 **`escapers.ts`** — low-level string escape utilities used inside the pipeline.
 
-**`relatedBuilder.ts`** — computes the four "related notes" sections shown (and toggleable) in the export modal. `scanOtherMarkdownFiles(app, file)` does a single vault pass (all other markdown files + their frontmatter) shared across the brand/taste/author computations to avoid scanning twice:
-- `computeBrandRelated`: notes sharing the current note's `brand` frontmatter value (supports `parent/child` brand naming — matches exact brand, then sibling sub-brands, then the parent, in that tier order; within each tier, notes whose `types` frontmatter array is exactly the same set as the current note's are listed before others and left enabled, while notes with a different type set are included but default to `enabled: false` — e.g. a pure `[energy]` note treats a hybrid `[alco, energy]` note as a different type, not a match; if the current note has no `types`, all items default to enabled), capped at 10 items
-- `computeTasteRelated`: notes sharing any `taste` frontmatter value (string or array) with the current note, with notes whose `types` frontmatter array exactly matches the current note's listed before others, capped at 10 items
+**`relatedBuilder.ts`** — computes the five "related notes" sections shown (and toggleable) in the export modal. `scanOtherMarkdownFiles(app, file)` does a single vault pass (all other markdown files + their frontmatter) shared across the brand/type/taste/author computations to avoid scanning twice:
+- `computeBrandRelated`: notes sharing the current note's `brand` frontmatter value (supports `parent/child` brand naming — matches exact brand, then sibling sub-brands, then the parent, in that tier order; within each tier, notes whose `types` frontmatter array is exactly the same set as the current note's are listed before others and left enabled, while notes with a different type set are included but default to `enabled: false` — e.g. a pure `[energy]` note treats a hybrid `[alco, energy]` note as a different type, not a match; if the current note has no `types`, all items default to enabled; within each type tier, notes with no `author` frontmatter value are listed before notes that have one), capped at 10 items
+- `computeTypeRelated`: notes whose `types` frontmatter array is exactly the same set as the current note's, with notes that have no `author` frontmatter value listed before notes that have one, capped at 10 items
+- `computeTasteRelated`: notes sharing any `taste` frontmatter value (string or array) with the current note, with notes whose `types` frontmatter array exactly matches the current note's listed before others and left enabled, while notes with a different type set are included but default to `enabled: false` (if the current note has no `types`, all items default to enabled); within each type tier, notes with no `author` frontmatter value are listed before notes that have one, capped at 10 items
 - `computeAuthorRelated`: notes sharing any `author` frontmatter value (string or array) with the current note, with notes whose `types` frontmatter array exactly matches the current note's listed before others, capped at 10 items
 - `computeManualRelated`: notes listed in the current note's `related` frontmatter field (resolves `[[wikilinks]]`, `[[Note|Alias]]`, `[[Note#Section]]`, and plain note names)
 
-All four only include notes with a non-empty `externalLinkField` value (the published Telegram link).
+All five only include notes with a non-empty `externalLinkField` value (the published Telegram link). Each item's display name is the related note's first `aliases` frontmatter entry, falling back to the file's basename; if the note also has a non-empty `author` field, ` by {author(s)}` is appended (comma-joined for arrays) — see `displayName()`.
 
-**`footerBuilder.ts`** — `buildFooterFromItems(options: ExportOptions, brandLabel, settings)` builds the footer string from the already-computed/user-toggled `RelatedItem` sections (it does not re-read frontmatter itself — that's `relatedBuilder.ts`'s job). Four possible sections, each independently toggleable:
+**`footerBuilder.ts`** — `buildFooterFromItems(options: ExportOptions, brandLabel, settings)` builds the footer string from the already-computed/user-toggled `RelatedItem` sections (it does not re-read frontmatter itself — that's `relatedBuilder.ts`'s job). Five possible sections, each independently toggleable, rendered in this order:
+- **"Пов'язані огляди:"** — from `options.manualRelated`
 - **"Більше [brandLabel]:"** — from `options.brandRelated`
+- **"Схожий тип:"** — from `options.typeRelated`
 - **"Схожий смак:"** — from `options.tasteRelated`
 - **"Ще від автора:"** — from `options.authorRelated`
-- **"Пов'язані огляди:"** — from `options.manualRelated`
+
+A URL already shown in an earlier section (manual → brand → type → taste) is excluded from every later section in that list, so the same note never appears twice; `authorRelated` is not deduplicated against the others.
 - Optionally appends `settings.finalHashtag` (configurable, default `#огляди`) if `options.includeHashtag` is set
 - `format: "html"` — links as `<a href="url">text</a>` (url- and hashtag-escaped), sections separated by `\n`
 - `format: "md"` — links as `[text](url)` (`]` in link text escaped), prepends `\n---\n` divider before footer, sections separated by `\n\n`, hashtag's leading `#` escaped to `\#` and appended inline to the last section to avoid header interpretation

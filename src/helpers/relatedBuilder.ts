@@ -17,6 +17,23 @@ function sameTypeSet(a: string[], b: string[]): boolean {
 	return a.every((t) => b.includes(t));
 }
 
+function hasAuthor(author: unknown): boolean {
+	return toStringArray(author).length > 0;
+}
+
+function displayName(
+	frontmatter: Record<string, unknown> | undefined,
+	fallback: string,
+): string {
+	const aliases = toStringArray(frontmatter?.["aliases"]);
+	const name = aliases[0] || fallback;
+
+	const authors = toStringArray(frontmatter?.["author"]);
+	if (authors.length === 0) return name;
+
+	return `${name} by ${authors.join(", ")}`;
+}
+
 export function scanOtherMarkdownFiles(
 	app: App,
 	file: TFile,
@@ -75,12 +92,13 @@ export function computeBrandRelated(
 			if (!matchesFamily(brand)) return [];
 			const url = fm[externalLinkField];
 			if (!url || typeof url !== "string" || !url.trim()) return [];
-			return [{ url: url.trim(), name: f.basename, brand, types: fm["types"] }];
+			return [{ url: url.trim(), name: displayName(fm, f.basename), brand, types: fm["types"], author: fm["author"] }];
 		})
 		.sort(
 			(a, b) =>
 				sortScore(a.brand) - sortScore(b.brand) ||
-				Number(!isSameType(a.types)) - Number(!isSameType(b.types)),
+				Number(!isSameType(a.types)) - Number(!isSameType(b.types)) ||
+				Number(hasAuthor(a.author)) - Number(hasAuthor(b.author)),
 		)
 		.slice(0, 10)
 		.map(({ url, name, types }) => ({
@@ -123,12 +141,43 @@ export function computeTasteRelated(
 				? otherTaste.map(String)
 				: [String(otherTaste)];
 			if (!tastes.some((t) => otherTastes.includes(t))) return [];
-			return [{ url: url.trim(), name: f.basename, types: fm["types"] }];
+			return [{ url: url.trim(), name: displayName(fm, f.basename), types: fm["types"], author: fm["author"] }];
 		})
 		.sort(
 			(a, b) =>
-				Number(!isSameType(a.types)) - Number(!isSameType(b.types)),
+				Number(!isSameType(a.types)) - Number(!isSameType(b.types)) ||
+				Number(hasAuthor(a.author)) - Number(hasAuthor(b.author)),
 		)
+		.slice(0, 10)
+		.map(({ url, name, types }) => ({
+			url,
+			name,
+			enabled: isSameType(types),
+		}));
+}
+
+export function computeTypeRelated(
+	app: App,
+	file: TFile,
+	settings: MyPluginSettings,
+	candidates: FileWithFrontmatter[] = scanOtherMarkdownFiles(app, file),
+): RelatedItem[] {
+	const { externalLinkField } = settings;
+	if (!externalLinkField) return [];
+
+	const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
+	const currentTypes = toStringArray(frontmatter?.["types"]);
+	if (currentTypes.length === 0) return [];
+
+	return candidates
+		.flatMap(({ file: f, frontmatter: fm }) => {
+			const otherTypes = toStringArray(fm["types"]);
+			if (!sameTypeSet(currentTypes, otherTypes)) return [];
+			const url = fm[externalLinkField];
+			if (!url || typeof url !== "string" || !url.trim()) return [];
+			return [{ url: url.trim(), name: displayName(fm, f.basename), author: fm["author"] }];
+		})
+		.sort((a, b) => Number(hasAuthor(a.author)) - Number(hasAuthor(b.author)))
 		.slice(0, 10)
 		.map(({ url, name }) => ({ url, name, enabled: true }));
 }
@@ -164,7 +213,7 @@ export function computeAuthorRelated(
 				? otherAuthor.map(String)
 				: [String(otherAuthor)];
 			if (!authors.some((a) => otherAuthors.includes(a))) return [];
-			return [{ url: url.trim(), name: f.basename, types: fm["types"] }];
+			return [{ url: url.trim(), name: displayName(fm, f.basename), types: fm["types"] }];
 		})
 		.sort(
 			(a, b) =>
@@ -204,12 +253,16 @@ export function computeManualRelated(
 		);
 		if (!target) return [];
 
-		const url =
-			app.metadataCache.getFileCache(target)?.frontmatter?.[
-				externalLinkField
-			];
+		const targetFrontmatter = app.metadataCache.getFileCache(target)?.frontmatter;
+		const url = targetFrontmatter?.[externalLinkField];
 		if (!url || typeof url !== "string" || !url.trim()) return [];
 
-		return [{ url: url.trim(), name: target.basename, enabled: true }];
+		return [
+			{
+				url: url.trim(),
+				name: displayName(targetFrontmatter, target.basename),
+				enabled: true,
+			},
+		];
 	});
 }

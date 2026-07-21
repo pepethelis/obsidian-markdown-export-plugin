@@ -7,6 +7,7 @@ import {
 	computeTasteRelated,
 	computeAuthorRelated,
 	computeManualRelated,
+	computeTypeRelated,
 	scanOtherMarkdownFiles,
 } from "../helpers/relatedBuilder";
 import {
@@ -73,13 +74,14 @@ export class Export {
 
 	private computeRelated(file: TFile | null) {
 		const { app, settings } = this.plugin;
-		if (!file) return { brandLabel: "", brandItems: [], tasteItems: [], authorItems: [], manualItems: [] };
+		if (!file) return { brandLabel: "", brandItems: [], typeItems: [], tasteItems: [], authorItems: [], manualItems: [] };
 		const candidates = scanOtherMarkdownFiles(app, file);
 		const { label: brandLabel, items: brandItems } = computeBrandRelated(app, file, settings, candidates);
+		const typeItems = computeTypeRelated(app, file, settings, candidates);
 		const tasteItems = computeTasteRelated(app, file, settings, candidates);
 		const authorItems = computeAuthorRelated(app, file, settings, candidates);
 		const manualItems = computeManualRelated(app, file, settings);
-		return { brandLabel, brandItems, tasteItems, authorItems, manualItems };
+		return { brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems };
 	}
 
 	private openModal(params: ModalParams): Promise<ExportOptions | null> {
@@ -106,7 +108,7 @@ export class Export {
 			return;
 		}
 
-		const { brandLabel, brandItems, tasteItems, authorItems, manualItems } =
+		const { brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems } =
 			this.computeRelated(activeView.file);
 
 		const options = await this.openModal({
@@ -114,7 +116,7 @@ export class Export {
 			submitLabel: "Export",
 			showReplyLink: false,
 			finalHashtag: settings.finalHashtag,
-			brandLabel, brandItems, tasteItems, authorItems, manualItems,
+			brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems,
 		});
 		if (!options) return;
 
@@ -137,7 +139,7 @@ export class Export {
 			return;
 		}
 
-		const { brandLabel, brandItems, tasteItems, authorItems, manualItems } =
+		const { brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems } =
 			this.computeRelated(activeView.file);
 
 		const options = await this.openModal({
@@ -145,7 +147,7 @@ export class Export {
 			submitLabel: "Export",
 			showReplyLink: false,
 			finalHashtag: settings.finalHashtag,
-			brandLabel, brandItems, tasteItems, authorItems, manualItems,
+			brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems,
 		});
 		if (!options) return;
 
@@ -172,7 +174,7 @@ export class Export {
 			return;
 		}
 
-		const { brandLabel, brandItems, tasteItems, authorItems, manualItems } =
+		const { brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems } =
 			this.computeRelated(file);
 
 		const options = await this.openModal({
@@ -180,7 +182,7 @@ export class Export {
 			submitLabel: "Post",
 			showReplyLink: true,
 			finalHashtag: settings.finalHashtag,
-			brandLabel, brandItems, tasteItems, authorItems, manualItems,
+			brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems,
 		});
 		if (!options) return;
 
@@ -247,7 +249,7 @@ export class Export {
 			);
 		}
 
-		const { brandLabel, brandItems, tasteItems, authorItems, manualItems } =
+		const { brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems } =
 			this.computeRelated(file);
 
 		const options = await this.openModal({
@@ -255,7 +257,7 @@ export class Export {
 			submitLabel: "Update",
 			showReplyLink: false,
 			finalHashtag: settings.finalHashtag,
-			brandLabel, brandItems, tasteItems, authorItems, manualItems,
+			brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems,
 			defaultFormat: storedFormat,
 		});
 		if (!options) return;

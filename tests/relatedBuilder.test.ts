@@ -5,6 +5,7 @@ import {
 	computeTasteRelated,
 	computeAuthorRelated,
 	computeManualRelated,
+	computeTypeRelated,
 } from "../src/helpers/relatedBuilder";
 import { MyPluginSettings } from "../src/types";
 
@@ -219,6 +220,16 @@ describe("computeBrandRelated", () => {
 		expect(result.items.map((i) => i.name)).toEqual(["exact-othertype", "sibling-othertype"]);
 	});
 
+	test("prefers items without an author field over items with one", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { brand: "monster" } },
+			{ path: "withauthor.md", basename: "withauthor", frontmatter: { brand: "monster", link: "https://t.me/withauthor", author: "Ann" } },
+			{ path: "noauthor.md", basename: "noauthor", frontmatter: { brand: "monster", link: "https://t.me/noauthor" } },
+		]);
+		const result = computeBrandRelated(app, currentFile, settings);
+		expect(result.items.map((i) => i.name)).toEqual(["noauthor", "withauthor by Ann"]);
+	});
+
 	test("multi-value types: candidate must match the full type set, not just overlap", () => {
 		// regression: real vault notes use a `types` array (e.g. `bronx` alco-energy hybrids are
 		// `[alco, energy]` while `bronx/zero` is plain `[energy]`) — a hybrid sharing one value
@@ -341,6 +352,132 @@ describe("computeTasteRelated", () => {
 		const result = computeTasteRelated(app, currentFile, settings);
 		expect(result.map((i) => i.name)).toEqual(["sametype", "othertype"]);
 	});
+
+	test("other-type items are disabled by default; same-type stay enabled", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { taste: "sweet", types: ["energy"] } },
+			{ path: "othertype.md", basename: "othertype", frontmatter: { taste: "sweet", link: "https://t.me/othertype", types: ["alco"] } },
+			{ path: "sametype.md", basename: "sametype", frontmatter: { taste: "sweet", link: "https://t.me/sametype", types: ["energy"] } },
+		]);
+		const result = computeTasteRelated(app, currentFile, settings);
+		expect(result.find((i) => i.name === "sametype")?.enabled).toBe(true);
+		expect(result.find((i) => i.name === "othertype")?.enabled).toBe(false);
+	});
+
+	test("all items default to enabled when current file has no types", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { taste: "sweet" } },
+			{ path: "a.md", basename: "a", frontmatter: { taste: "sweet", link: "https://t.me/a", types: ["energy"] } },
+			{ path: "b.md", basename: "b", frontmatter: { taste: "sweet", link: "https://t.me/b", types: ["alco"] } },
+		]);
+		const result = computeTasteRelated(app, currentFile, settings);
+		expect(result.every((i) => i.enabled)).toBe(true);
+	});
+
+	test("prefers items without an author field over items with one", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { taste: "sweet" } },
+			{ path: "withauthor.md", basename: "withauthor", frontmatter: { taste: "sweet", link: "https://t.me/withauthor", author: "Ann" } },
+			{ path: "noauthor.md", basename: "noauthor", frontmatter: { taste: "sweet", link: "https://t.me/noauthor" } },
+		]);
+		const result = computeTasteRelated(app, currentFile, settings);
+		expect(result.map((i) => i.name)).toEqual(["noauthor", "withauthor by Ann"]);
+	});
+});
+
+// ── computeTypeRelated ────────────────────────────────────────────────────
+
+describe("computeTypeRelated", () => {
+	test("returns empty when externalLinkField is unset", () => {
+		const app = makeApp([{ path: "current.md", basename: "current", frontmatter: {} }]);
+		const result = computeTypeRelated(app, currentFile, { ...settings, externalLinkField: "" });
+		expect(result).toEqual([]);
+	});
+
+	test("returns empty when current file has no types", () => {
+		const app = makeApp([{ path: "current.md", basename: "current", frontmatter: {} }]);
+		const result = computeTypeRelated(app, currentFile, settings);
+		expect(result).toEqual([]);
+	});
+
+	test("excludes the current file itself", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { types: ["energy"], link: "https://t.me/cur" } },
+		]);
+		const result = computeTypeRelated(app, currentFile, settings);
+		expect(result).toHaveLength(0);
+	});
+
+	test("matches file with the exact same types set", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { types: ["energy"] } },
+			{ path: "match.md", basename: "match", frontmatter: { types: ["energy"], link: "https://t.me/match" } },
+			{ path: "nomatch.md", basename: "nomatch", frontmatter: { types: ["alco"], link: "https://t.me/nm" } },
+		]);
+		const result = computeTypeRelated(app, currentFile, settings);
+		expect(result).toHaveLength(1);
+		expect(result[0].name).toBe("match");
+	});
+
+	test("excludes files whose types set is a subset/superset, not an exact match", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { types: ["energy", "alco"] } },
+			{ path: "partial.md", basename: "partial", frontmatter: { types: ["energy"], link: "https://t.me/partial" } },
+		]);
+		const result = computeTypeRelated(app, currentFile, settings);
+		expect(result).toHaveLength(0);
+	});
+
+	test("excludes files without link field", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { types: ["energy"] } },
+			{ path: "nolink.md", basename: "nolink", frontmatter: { types: ["energy"] } },
+		]);
+		const result = computeTypeRelated(app, currentFile, settings);
+		expect(result).toHaveLength(0);
+	});
+
+	test("slices to 10 items maximum", () => {
+		const extras = Array.from({ length: 15 }, (_, i) => ({
+			path: `n${i}.md`,
+			basename: `n${i}`,
+			frontmatter: { types: ["energy"], link: `https://t.me/${i}` },
+		}));
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { types: ["energy"] } },
+			...extras,
+		]);
+		const result = computeTypeRelated(app, currentFile, settings);
+		expect(result).toHaveLength(10);
+	});
+
+	test("all returned items have enabled: true", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { types: ["energy"] } },
+			{ path: "other.md", basename: "other", frontmatter: { types: ["energy"], link: "https://t.me/1" } },
+		]);
+		const result = computeTypeRelated(app, currentFile, settings);
+		expect(result.every((i) => i.enabled)).toBe(true);
+	});
+
+	test("url is trimmed", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { types: ["energy"] } },
+			{ path: "other.md", basename: "other", frontmatter: { types: ["energy"], link: "  https://t.me/1  " } },
+		]);
+		const result = computeTypeRelated(app, currentFile, settings);
+		expect(result[0].url).toBe("https://t.me/1");
+	});
+
+	test("prefers items without an author field over items with one", () => {
+		const app = makeApp([
+			{ path: "current.md", basename: "current", frontmatter: { types: ["energy"] } },
+			{ path: "withauthor.md", basename: "withauthor", frontmatter: { types: ["energy"], link: "https://t.me/withauthor", author: "Ann" } },
+			{ path: "noauthor.md", basename: "noauthor", frontmatter: { types: ["energy"], link: "https://t.me/noauthor" } },
+		]);
+		const result = computeTypeRelated(app, currentFile, settings);
+		expect(result.map((i) => i.name)).toEqual(["noauthor", "withauthor by Ann"]);
+	});
 });
 
 // ── computeAuthorRelated ──────────────────────────────────────────────────
@@ -374,7 +511,7 @@ describe("computeAuthorRelated", () => {
 		]);
 		const result = computeAuthorRelated(app, currentFile, settings);
 		expect(result).toHaveLength(1);
-		expect(result[0].name).toBe("match");
+		expect(result[0].name).toBe("match by Ann");
 	});
 
 	test("handles string author (not array) in current file", () => {
@@ -434,7 +571,7 @@ describe("computeAuthorRelated", () => {
 			{ path: "sametype.md", basename: "sametype", frontmatter: { author: "Ann", link: "https://t.me/sametype", types: ["energy"] } },
 		]);
 		const result = computeAuthorRelated(app, currentFile, settings);
-		expect(result.map((i) => i.name)).toEqual(["sametype", "othertype"]);
+		expect(result.map((i) => i.name)).toEqual(["sametype by Ann", "othertype by Ann"]);
 	});
 });
 
