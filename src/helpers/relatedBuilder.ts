@@ -1,5 +1,5 @@
 import { App, TFile } from "obsidian";
-import { MyPluginSettings, RelatedItem } from "../types";
+import { TelegramExportSettings, RelatedItem } from "../types";
 
 export interface FileWithFrontmatter {
 	file: TFile;
@@ -49,7 +49,7 @@ export function scanOtherMarkdownFiles(
 export function computeBrandRelated(
 	app: App,
 	file: TFile,
-	settings: MyPluginSettings,
+	settings: TelegramExportSettings,
 	candidates: FileWithFrontmatter[] = scanOtherMarkdownFiles(app, file),
 ): { label: string; items: RelatedItem[] } {
 	const { externalLinkField } = settings;
@@ -113,7 +113,7 @@ export function computeBrandRelated(
 export function computeTasteRelated(
 	app: App,
 	file: TFile,
-	settings: MyPluginSettings,
+	settings: TelegramExportSettings,
 	candidates: FileWithFrontmatter[] = scanOtherMarkdownFiles(app, file),
 ): RelatedItem[] {
 	const { externalLinkField } = settings;
@@ -159,7 +159,7 @@ export function computeTasteRelated(
 export function computeTypeRelated(
 	app: App,
 	file: TFile,
-	settings: MyPluginSettings,
+	settings: TelegramExportSettings,
 	candidates: FileWithFrontmatter[] = scanOtherMarkdownFiles(app, file),
 ): RelatedItem[] {
 	const { externalLinkField } = settings;
@@ -185,7 +185,7 @@ export function computeTypeRelated(
 export function computeAuthorRelated(
 	app: App,
 	file: TFile,
-	settings: MyPluginSettings,
+	settings: TelegramExportSettings,
 	candidates: FileWithFrontmatter[] = scanOtherMarkdownFiles(app, file),
 ): RelatedItem[] {
 	const { externalLinkField } = settings;
@@ -226,7 +226,7 @@ export function computeAuthorRelated(
 export function computeManualRelated(
 	app: App,
 	file: TFile,
-	settings: MyPluginSettings,
+	settings: TelegramExportSettings,
 ): RelatedItem[] {
 	const { externalLinkField } = settings;
 	if (!externalLinkField) return [];

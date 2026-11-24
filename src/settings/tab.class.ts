@@ -1,13 +1,13 @@
 import { App, PluginSettingTab, SettingDefinitionItem } from "obsidian";
-import MyPlugin from "../plugin.class";
-import { MyPluginSettings } from "../types";
+import TelegramExportPlugin from "../plugin.class";
+import { TelegramExportSettings } from "../types";
 
-type SettingKey = keyof MyPluginSettings;
+type SettingKey = keyof TelegramExportSettings;
 
 export class MdExportSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+	plugin: TelegramExportPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: TelegramExportPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 		this.icon = "message-square-share";

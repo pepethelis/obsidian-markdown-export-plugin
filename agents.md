@@ -16,7 +16,7 @@ Tests only cover pure logic (`src/helpers/*`) that doesn't call live Obsidian ru
 
 ## Architecture
 
-This is an **Obsidian plugin** that exports/sends Obsidian notes to Telegram via the Bot API. Entry point is `src/main.ts` → `src/plugin.class.ts` (`MyPlugin extends Plugin`).
+This is an **Obsidian plugin** that exports/sends Obsidian notes to Telegram via the Bot API. Entry point is `src/main.ts` → `src/plugin.class.ts` (`TelegramExportPlugin extends Plugin`).
 
 On `onload`, the plugin instantiates a single `Export` class (`modules/export.class.ts`) that registers all ribbon icons and commands:
 
@@ -90,7 +90,7 @@ A URL already shown in an earlier section (manual → brand → type → taste) 
 
 ### Settings
 
-`MyPluginSettings` (in `src/types.ts`) stores the bot token key name (secret looked up via `app.secretStorage`), chat/channel identifiers, and configurable frontmatter field names:
+`TelegramExportSettings` (in `src/types.ts`) stores the bot token key name (secret looked up via `app.secretStorage`), chat/channel identifiers, and configurable frontmatter field names:
 
 | Field | Purpose |
 |---|---|
@@ -104,4 +104,4 @@ A URL already shown in an earlier section (manual → brand → type → taste) 
 | `publishedStatusValue` | Value written to `statusField` after publishing |
 | `finalHashtag` | Hashtag optionally appended at the end of the footer (default `#огляди`) |
 
-Settings UI lives in `src/settings/tab.class.ts` and uses the declarative settings API (Obsidian 1.13+): `getSettingDefinitions()` returns groups of `control` definitions keyed by `MyPluginSettings` fields; Obsidian renders them, indexes them for settings search, and reads/persists values via `this.plugin.settings` (no manual `onChange`/`saveSettings`). `minAppVersion` is `1.13.2` (needed for the `secret` control type). The bot token is stored as a **secret key name** — the actual token is retrieved at send-time via `app.secretStorage.getSecret(settings.botToken)` (Obsidian 1.11+ secrets API).
+Settings UI lives in `src/settings/tab.class.ts` and uses the declarative settings API (Obsidian 1.13+): `getSettingDefinitions()` returns groups of `control` definitions keyed by `TelegramExportSettings` fields; Obsidian renders them, indexes them for settings search, and reads/persists values via `this.plugin.settings` (no manual `onChange`/`saveSettings`). `minAppVersion` is `1.13.2` (needed for the `secret` control type). The bot token is stored as a **secret key name** — the actual token is retrieved at send-time via `app.secretStorage.getSecret(settings.botToken)` (Obsidian 1.11+ secrets API).

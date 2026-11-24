@@ -7,7 +7,7 @@ import {
 	computeManualRelated,
 	computeTypeRelated,
 } from "../src/helpers/relatedBuilder";
-import { MyPluginSettings } from "../src/types";
+import { TelegramExportSettings } from "../src/types";
 
 // ── mock helpers ──────────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ function makeApp(files: MockFile[]): App {
 	} as unknown as App;
 }
 
-const settings: MyPluginSettings = {
+const settings: TelegramExportSettings = {
 	botToken: "key",
 	chatId: "chat",
 	externalLinkField: "link",

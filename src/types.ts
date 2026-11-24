@@ -1,4 +1,4 @@
-export interface MyPluginSettings {
+export interface TelegramExportSettings {
 	botToken: string;
 	chatId: string;
 	externalLinkField: string;

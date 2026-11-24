@@ -56,8 +56,6 @@ export const convertWikilinks = (params: {
 		},
 	);
 
-	console.log("With converted wikilinks:", { result });
-
 	return result;
 };
 

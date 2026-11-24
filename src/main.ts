@@ -1,3 +1,3 @@
-import MyPlugin from "./plugin.class";
+import TelegramExportPlugin from "./plugin.class";
 
-export default MyPlugin;
+export default TelegramExportPlugin;

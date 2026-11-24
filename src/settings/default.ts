@@ -1,6 +1,6 @@
-import { MyPluginSettings } from "../types";
+import { TelegramExportSettings } from "../types";
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
+export const DEFAULT_SETTINGS: TelegramExportSettings = {
 	botToken: "",
 	chatId: "",
 	externalLinkField: "",

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { buildFooterFromItems } from "../src/helpers/footerBuilder";
-import { ExportOptions, MyPluginSettings, RelatedSection } from "../src/types";
+import { ExportOptions, TelegramExportSettings, RelatedSection } from "../src/types";
 
-const baseSettings: MyPluginSettings = {
+const baseSettings: TelegramExportSettings = {
 	botToken: "key",
 	chatId: "chat",
 	externalLinkField: "link",

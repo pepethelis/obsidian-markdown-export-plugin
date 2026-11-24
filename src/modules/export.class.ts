@@ -23,7 +23,7 @@ import {
 import { confirmAction } from "../modals/confirm";
 import { promptReplyMessageId } from "../modals/reply-link.modal";
 import { ExportOptions } from "../types";
-import MyPlugin from "../plugin.class";
+import TelegramExportPlugin from "../plugin.class";
 
 interface TelegramResponse {
 	ok: boolean;
@@ -33,30 +33,15 @@ interface TelegramResponse {
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n?/;
 
 export class Export {
-	private plugin: MyPlugin;
+	private plugin: TelegramExportPlugin;
 
-	constructor(plugin: MyPlugin) {
+	constructor(plugin: TelegramExportPlugin) {
 		this.plugin = plugin;
 
-		plugin
-			.addRibbonIcon("send", "Export full page", () => this.runFullPage())
-			.addClass("my-plugin-ribbon-class");
-
-		plugin
-			.addRibbonIcon("scissors", "Export selection", () =>
-				this.runSelection(),
-			)
-			.addClass("my-plugin-ribbon-class");
-
-		plugin
-			.addRibbonIcon("arrow-up-right", "Post to channel", () =>
-				this.runChannel(),
-			)
-			.addClass("my-plugin-ribbon-class");
-
-		plugin
-			.addRibbonIcon("pencil-line", "Update post", () => this.runUpdate())
-			.addClass("my-plugin-ribbon-class");
+		plugin.addRibbonIcon("send", "Export full page", () => this.runFullPage());
+		plugin.addRibbonIcon("scissors", "Export selection", () => this.runSelection());
+		plugin.addRibbonIcon("arrow-up-right", "Post to channel", () => this.runChannel());
+		plugin.addRibbonIcon("pencil-line", "Update post", () => this.runUpdate());
 
 		plugin.addCommand({
 			id: "export-full-page",

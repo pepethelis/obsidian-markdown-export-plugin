@@ -1,4 +1,4 @@
-import { MyPluginSettings, ExportOptions } from "../types";
+import { TelegramExportSettings, ExportOptions } from "../types";
 import { escapeHtmlPreserveEntities } from "./escapers";
 
 type LinkBuilder = (url: string, text: string) => string;
@@ -12,7 +12,7 @@ const mdLink: LinkBuilder = (url, text) =>
 export function buildFooterFromItems(
 	options: ExportOptions,
 	brandLabel: string,
-	settings: MyPluginSettings,
+	settings: TelegramExportSettings,
 ): string {
 	const { format } = options;
 	const linkFn: LinkBuilder = format === "html" ? htmlLink : mdLink;
