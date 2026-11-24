@@ -1,7 +1,12 @@
 import { MarkdownView, Notice, TFile } from "obsidian";
 import { buildFooterFromItems } from "../helpers/footerBuilder";
 import { resolveStoredFormat } from "../helpers/telegramFormat";
-import { buildTelegramRequest, TelegramRequest } from "../helpers/telegramRequest";
+import {
+	buildTelegramRequest,
+	TELEGRAM_TEXT_LIMIT,
+	TelegramRequest,
+	textOverLimit,
+} from "../helpers/telegramRequest";
 import { describeTelegramError } from "../helpers/telegramError";
 import {
 	computeBrandRelated,
@@ -17,6 +22,11 @@ import {
 } from "../modals/export-settings.modal";
 import { ExportOptions } from "../types";
 import MyPlugin from "../plugin.class";
+
+interface TelegramResponse {
+	ok: boolean;
+	result?: { message_id?: number };
+}
 
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n?/;
 
@@ -277,19 +287,47 @@ export class Export {
 
 	// ── network ────────────────────────────────────────────────────────────
 
-	private sendTelegramRequest(request: TelegramRequest): Promise<Response> {
-		return fetch(request.url, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(request.body),
-		});
-	}
+	/**
+	 * Sends a request to the Bot API. Returns the parsed response on success;
+	 * on any failure shows a notice titled `failTitle` and returns null.
+	 */
+	private async send(
+		request: TelegramRequest,
+		failTitle: string,
+	): Promise<TelegramResponse | null> {
+		const tooLong = textOverLimit(request);
+		if (tooLong !== null) {
+			new Notice(
+				`${failTitle} ❌
+Message is too long: ~${tooLong} of ${TELEGRAM_TEXT_LIMIT} characters. ` +
+					"Turn off some related sections or shorten the text.",
+				10000,
+			);
+			return null;
+		}
 
-	private async reportFailure(title: string, response: Response) {
+		let response: Response;
+		try {
+			response = await fetch(request.url, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(request.body),
+			});
+		} catch (e) {
+			console.error("Telegram request failed:", e);
+			new Notice(`${failTitle} ❌
+Network error: ${e instanceof Error ? e.message : String(e)}`, 10000);
+			return null;
+		}
+
 		const bodyText = await response.text();
-		console.error("Telegram API error:", bodyText);
-		const reason = describeTelegramError(response.status, bodyText);
-		new Notice(`${title} ❌\n${reason}`, 10000);
+		if (!response.ok) {
+			console.error("Telegram API error:", bodyText);
+			new Notice(`${failTitle} ❌
+${describeTelegramError(response.status, bodyText)}`, 10000);
+			return null;
+		}
+		return JSON.parse(bodyText) as TelegramResponse;
 	}
 
 	private async exec(message: string, footer: string, format: "html" | "md", botToken: string) {
@@ -300,12 +338,8 @@ export class Export {
 			{ message, footer, format, app, wikilinkExternalLinkField: externalLinkField },
 			{ botToken, operation: "send", chatId },
 		);
-		const response = await this.sendTelegramRequest(request);
-
-		if (response.ok) {
+		if (await this.send(request, "Failed to send message")) {
 			new Notice("Message sent to Telegram ✅");
-		} else {
-			await this.reportFailure("Failed to send message", response);
 		}
 	}
 
@@ -340,22 +374,18 @@ export class Export {
 			{ message, footer, format, app, wikilinkExternalLinkField: externalLinkField },
 			{ botToken, operation: "send", chatId, replyToMessageId },
 		);
-		const response = await this.sendTelegramRequest(request);
+		const json = await this.send(request, "Failed to post to channel");
+		if (!json) return null;
 
-		if (response.ok) {
-			const json = await response.json();
-			new Notice("Posted to channel ✅");
-			if (channelUsername.startsWith("-100")) {
-				return `https://t.me/c/${channelUsername.substring(4)}/${json.result.message_id}`;
-			}
-			const uname = channelUsername.startsWith("@")
-				? channelUsername.substring(1)
-				: channelUsername;
-			return `https://t.me/${uname}/${json.result.message_id}`;
+		new Notice("Posted to channel ✅");
+		const messageId = json.result?.message_id;
+		if (channelUsername.startsWith("-100")) {
+			return `https://t.me/c/${channelUsername.substring(4)}/${messageId}`;
 		}
-
-		await this.reportFailure("Failed to post to channel", response);
-		return null;
+		const uname = channelUsername.startsWith("@")
+			? channelUsername.substring(1)
+			: channelUsername;
+		return `https://t.me/${uname}/${messageId}`;
 	}
 
 	private async execUpdate(
@@ -387,14 +417,9 @@ export class Export {
 			{ message, footer, format, app, wikilinkExternalLinkField: externalLinkField },
 			{ botToken, operation: "edit", chatId, messageId },
 		);
-		const response = await this.sendTelegramRequest(request);
+		if (!(await this.send(request, "Failed to update post"))) return false;
 
-		if (response.ok) {
-			new Notice("Post updated ✅");
-			return true;
-		}
-
-		await this.reportFailure("Failed to update post", response);
-		return false;
+		new Notice("Post updated ✅");
+		return true;
 	}
 }

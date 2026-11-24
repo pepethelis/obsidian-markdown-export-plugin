@@ -25,6 +25,30 @@ export interface TelegramRequest {
 	body: Record<string, unknown>;
 }
 
+/** Bot API limit for message text, counted after entity (HTML markup) parsing. */
+export const TELEGRAM_TEXT_LIMIT = 4096;
+
+/**
+ * Approximates how many characters Telegram will count for an HTML-mode message:
+ * tags are stripped and entities count as the single character they encode.
+ */
+export function htmlVisibleLength(html: string): number {
+	return html.replace(/<[^>]*>/g, "").replace(/&(?:[a-zA-Z]+|#\d+|#x[0-9A-Fa-f]+);/g, "_")
+		.length;
+}
+
+/**
+ * Returns the visible length when an HTML-mode request exceeds the text limit,
+ * or null when it fits. Rich (markdown) messages are not checked — their limit
+ * is not documented the same way.
+ */
+export function textOverLimit(request: TelegramRequest): number | null {
+	const text = request.body.text;
+	if (typeof text !== "string") return null;
+	const length = htmlVisibleLength(text);
+	return length > TELEGRAM_TEXT_LIMIT ? length : null;
+}
+
 export function buildTelegramRequest(
 	input: TelegramMessageInput,
 	options: TelegramRequestOptions,

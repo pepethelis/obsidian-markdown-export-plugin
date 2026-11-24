@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { App } from "obsidian";
-import { buildTelegramRequest } from "../src/helpers/telegramRequest";
+import {
+	buildTelegramRequest,
+	htmlVisibleLength,
+	TELEGRAM_TEXT_LIMIT,
+	textOverLimit,
+} from "../src/helpers/telegramRequest";
 
 // Content with no wikilinks never touches `app`, so an empty stub is enough here.
 const app = {} as unknown as App;
@@ -84,5 +89,34 @@ describe("buildTelegramRequest — edit (md)", () => {
 			rich_message: { markdown: "hello" },
 		});
 		expect(request.body.disable_web_page_preview).toBeUndefined();
+	});
+});
+
+describe("htmlVisibleLength", () => {
+	test("ignores tags and counts entities as one character", () => {
+		expect(htmlVisibleLength('<b>hi</b> <a href="https://x.y">link</a>')).toBe(7);
+		expect(htmlVisibleLength("a &lt; b &amp; c &#39;d&#39;")).toBe(13);
+	});
+});
+
+describe("textOverLimit", () => {
+	const build = (message: string, format: "html" | "md") =>
+		buildTelegramRequest(
+			{ message, footer: "", format, app, wikilinkExternalLinkField: "link" },
+			{ botToken: "TOKEN", operation: "send", chatId: "123" },
+		);
+
+	test("returns null when the HTML text fits", () => {
+		expect(textOverLimit(build("a".repeat(TELEGRAM_TEXT_LIMIT), "html"))).toBeNull();
+	});
+
+	test("returns the visible length when the HTML text is too long", () => {
+		expect(textOverLimit(build("a".repeat(TELEGRAM_TEXT_LIMIT + 5), "html"))).toBe(
+			TELEGRAM_TEXT_LIMIT + 5,
+		);
+	});
+
+	test("does not check rich (md) messages", () => {
+		expect(textOverLimit(build("a".repeat(TELEGRAM_TEXT_LIMIT + 5), "md"))).toBeNull();
 	});
 });
