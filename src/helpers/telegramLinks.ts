@@ -1,11 +1,30 @@
+export interface PostRef {
+	/** Bot API chat_id: `@username` or `-100…`. */
+	chatId: string;
+	messageId: number;
+}
+
 /**
- * Extracts the message id from a Telegram post link:
- * `https://t.me/<channel>/<id>` or `https://t.me/c/<internal id>/<id>`.
+ * Parses a Telegram post link into the chat and message it points to:
+ * `https://t.me/<channel>/<id>` → `@channel`, `https://t.me/c/<internal id>/<id>` → `-100<internal id>`.
  * Returns null when the link is not a post link.
  */
-export function parsePostMessageId(link: string): number | null {
-	const match = link.trim().match(/^https?:\/\/t\.me\/(?:c\/\d+|[^/\s]+)\/(\d+)/);
-	return match ? parseInt(match[1], 10) : null;
+export function parsePostLink(link: string): PostRef | null {
+	const value = link.trim();
+	const privateMatch = value.match(/^https?:\/\/t\.me\/c\/(\d+)\/(\d+)/);
+	if (privateMatch) {
+		return { chatId: `-100${privateMatch[1]}`, messageId: parseInt(privateMatch[2], 10) };
+	}
+	const publicMatch = value.match(/^https?:\/\/t\.me\/([A-Za-z]\w+)\/(\d+)/);
+	if (publicMatch) {
+		return { chatId: `@${publicMatch[1]}`, messageId: parseInt(publicMatch[2], 10) };
+	}
+	return null;
+}
+
+/** Whether two Bot API chat ids refer to the same chat (usernames are case-insensitive). */
+export function sameChat(a: string, b: string): boolean {
+	return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
 /** Returns an error message for an invalid channel identifier, or undefined if valid. */

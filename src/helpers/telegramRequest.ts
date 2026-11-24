@@ -1,6 +1,7 @@
 import { App } from "obsidian";
 import { convertToHTML } from "./htmlConverter";
 import { convertToTgMd } from "./mdConverter";
+import { PostRef, sameChat } from "./telegramLinks";
 
 export type TelegramOperation = "send" | "edit";
 
@@ -17,7 +18,8 @@ export interface TelegramRequestOptions {
 	operation: TelegramOperation;
 	chatId: string;
 	messageId?: number;
-	replyToMessageId?: number;
+	/** Post to reply to; may be in another chat (cross-chat reply). */
+	replyTo?: PostRef;
 }
 
 export interface TelegramRequest {
@@ -54,12 +56,17 @@ export function buildTelegramRequest(
 	options: TelegramRequestOptions,
 ): TelegramRequest {
 	const { message, footer, format, app, wikilinkExternalLinkField } = input;
-	const { botToken, operation, chatId, messageId, replyToMessageId } = options;
+	const { botToken, operation, chatId, messageId, replyTo } = options;
 	const isEdit = operation === "edit";
 
 	const body: Record<string, unknown> = { chat_id: chatId };
 	if (messageId !== undefined) body.message_id = messageId;
-	if (replyToMessageId !== undefined) body.reply_to_message_id = replyToMessageId;
+	if (replyTo) {
+		// reply_parameters.chat_id is only needed when the original is in another chat.
+		body.reply_parameters = sameChat(replyTo.chatId, chatId)
+			? { message_id: replyTo.messageId }
+			: { message_id: replyTo.messageId, chat_id: replyTo.chatId };
+	}
 
 	if (format === "md") {
 		const converted =

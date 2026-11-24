@@ -8,7 +8,7 @@ import {
 	textOverLimit,
 } from "../helpers/telegramRequest";
 import { describeTelegramError } from "../helpers/telegramError";
-import { channelChatId, channelPostUrl } from "../helpers/telegramLinks";
+import { channelChatId, channelPostUrl, parsePostLink, PostRef } from "../helpers/telegramLinks";
 import {
 	computeBrandRelated,
 	computeTasteRelated,
@@ -22,7 +22,7 @@ import {
 	ModalParams,
 } from "../modals/export-settings.modal";
 import { confirmAction } from "../modals/confirm";
-import { promptReplyMessageId } from "../modals/reply-link.modal";
+import { promptReplyPost } from "../modals/reply-link.modal";
 import { Channel, ExportOptions } from "../types";
 import TelegramExportPlugin from "../plugin.class";
 
@@ -213,12 +213,12 @@ export class Export {
 	}
 
 	private async runChannelReply() {
-		const replyToMessageId = await promptReplyMessageId(this.plugin.app);
-		if (replyToMessageId === null) return;
-		await this.runChannel(replyToMessageId);
+		const replyTo = await promptReplyPost(this.plugin.app);
+		if (!replyTo) return;
+		await this.runChannel(replyTo);
 	}
 
-	private async runChannel(replyToMessageId?: number) {
+	private async runChannel(replyTo?: PostRef) {
 		const activeView =
 			this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!activeView) return;
@@ -254,7 +254,7 @@ export class Export {
 
 		const footer = buildFooterFromItems(options, brandLabel, settings);
 		const postUrl = await this.execChannel(
-			channel, page, footer, options.format, replyToMessageId, botToken,
+			channel, page, footer, options.format, replyTo, botToken,
 		);
 		if (!postUrl) return;
 		if (!channel.updateNote) return;
@@ -417,7 +417,7 @@ ${describeTelegramError(response.status, bodyText)}`, 10000);
 		message: string,
 		footer: string,
 		format: "html" | "md",
-		replyToMessageId: number | undefined,
+		replyTo: PostRef | undefined,
 		botToken: string,
 	): Promise<string | null> {
 		const { externalLinkField } = this.plugin.settings;
@@ -426,7 +426,7 @@ ${describeTelegramError(response.status, bodyText)}`, 10000);
 
 		const request = buildTelegramRequest(
 			{ message, footer, format, app, wikilinkExternalLinkField: externalLinkField },
-			{ botToken, operation: "send", chatId, replyToMessageId },
+			{ botToken, operation: "send", chatId, replyTo },
 		);
 		const json = await this.send(request, "Failed to post to channel");
 		if (!json) return null;
@@ -445,20 +445,9 @@ ${describeTelegramError(response.status, bodyText)}`, 10000);
 		const { externalLinkField } = this.plugin.settings;
 		const app = this.plugin.app;
 
-		let chatId: string;
-		let messageId: number;
-
-		if (postLink.includes("/c/")) {
-			const m = postLink.match(/https?:\/\/t\.me\/c\/(\d+)\/(\d+)/);
-			if (!m) { new Notice("Invalid private Telegram post link ❌"); return false; }
-			chatId = `-100${m[1]}`;
-			messageId = parseInt(m[2], 10);
-		} else {
-			const m = postLink.match(/https?:\/\/t\.me\/([^/]+)\/(\d+)/);
-			if (!m) { new Notice("Invalid Telegram post link ❌"); return false; }
-			chatId = `@${m[1]}`;
-			messageId = parseInt(m[2], 10);
-		}
+		const post = parsePostLink(postLink);
+		if (!post) { new Notice("Invalid Telegram post link ❌"); return false; }
+		const { chatId, messageId } = post;
 
 		const request = buildTelegramRequest(
 			{ message, footer, format, app, wikilinkExternalLinkField: externalLinkField },

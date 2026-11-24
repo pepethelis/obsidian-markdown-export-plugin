@@ -2,24 +2,32 @@ import { describe, expect, test } from "bun:test";
 import {
 	channelChatId,
 	channelPostUrl,
-	parsePostMessageId,
+	parsePostLink,
+	sameChat,
 	validateChannelUsername,
 } from "../src/helpers/telegramLinks";
 
-describe("parsePostMessageId", () => {
+describe("parsePostLink", () => {
 	test("parses public channel links", () => {
-		expect(parsePostMessageId("https://t.me/my_channel/123")).toBe(123);
-		expect(parsePostMessageId("  https://t.me/my_channel/45?single  ")).toBe(45);
+		expect(parsePostLink("https://t.me/kallection/40308")).toEqual({ chatId: "@kallection", messageId: 40308 });
+		expect(parsePostLink("  https://t.me/my_channel/45?single  ")).toEqual({ chatId: "@my_channel", messageId: 45 });
 	});
 
 	test("parses private channel links", () => {
-		expect(parsePostMessageId("https://t.me/c/1234567890/77")).toBe(77);
+		expect(parsePostLink("https://t.me/c/1403600379/77")).toEqual({ chatId: "-1001403600379", messageId: 77 });
 	});
 
 	test("rejects non-post links", () => {
-		expect(parsePostMessageId("https://t.me/my_channel")).toBeNull();
-		expect(parsePostMessageId("https://example.com/a/1")).toBeNull();
-		expect(parsePostMessageId("")).toBeNull();
+		expect(parsePostLink("https://t.me/my_channel")).toBeNull();
+		expect(parsePostLink("https://example.com/a/1")).toBeNull();
+		expect(parsePostLink("")).toBeNull();
+	});
+});
+
+describe("sameChat", () => {
+	test("compares case-insensitively", () => {
+		expect(sameChat("@Kallection", "@kallection")).toBe(true);
+		expect(sameChat("@kallection", "-1001403600379")).toBe(false);
 	});
 });
 

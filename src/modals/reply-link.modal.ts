@@ -1,5 +1,5 @@
 import { App, ConfirmationModal, TextComponent } from "obsidian";
-import { parsePostMessageId } from "../helpers/telegramLinks";
+import { parsePostLink, PostRef } from "../helpers/telegramLinks";
 
 /**
  * Small prompt for the Telegram post to reply to. Kept separate from the export
@@ -7,11 +7,11 @@ import { parsePostMessageId } from "../helpers/telegramLinks";
  * here the input sits at the top with the buttons right below it.
  */
 class ReplyLinkModal extends ConfirmationModal {
-	private messageId: number | null = null;
+	private result: PostRef | null = null;
 
 	constructor(
 		app: App,
-		private onResult: (messageId: number | null) => void,
+		private onResult: (post: PostRef | null) => void,
 	) {
 		super(app);
 		this.setTitle("Reply to post");
@@ -26,12 +26,12 @@ class ReplyLinkModal extends ConfirmationModal {
 			btn.setButtonText("Continue")
 				.setCta()
 				.onClick(() => {
-					const id = parsePostMessageId(input.getValue());
-					if (id === null) {
+					const post = parsePostLink(input.getValue());
+					if (!post) {
 						errorEl.setText("Paste a post link like https://t.me/channel/123");
 						return true; // keep the modal open
 					}
-					this.messageId = id;
+					this.result = post;
 				});
 		});
 		this.addCancelButton();
@@ -51,12 +51,12 @@ class ReplyLinkModal extends ConfirmationModal {
 
 	onClose() {
 		super.onClose();
-		this.onResult(this.messageId);
+		this.onResult(this.result);
 	}
 }
 
-/** Resolves to the message id to reply to, or null if the user cancelled. */
-export function promptReplyMessageId(app: App): Promise<number | null> {
+/** Resolves to the post to reply to (possibly in another channel), or null if cancelled. */
+export function promptReplyPost(app: App): Promise<PostRef | null> {
 	return new Promise((resolve) => {
 		new ReplyLinkModal(app, resolve).open();
 	});

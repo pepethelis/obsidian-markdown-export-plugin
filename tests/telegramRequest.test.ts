@@ -23,16 +23,30 @@ describe("buildTelegramRequest — send (html)", () => {
 			parse_mode: "HTML",
 			disable_web_page_preview: true,
 		});
-		expect(request.body.reply_to_message_id).toBeUndefined();
+		expect(request.body.reply_parameters).toBeUndefined();
 		expect(request.body.message_id).toBeUndefined();
 	});
 
-	test("includes reply_to_message_id when provided", () => {
+	test("replies within the same chat without reply_parameters.chat_id", () => {
 		const request = buildTelegramRequest(
 			{ message: "hello", footer: "", format: "html", app, wikilinkExternalLinkField: "link" },
-			{ botToken: "TOKEN", operation: "send", chatId: "@chan", replyToMessageId: 42 },
+			{ botToken: "TOKEN", operation: "send", chatId: "@chan", replyTo: { chatId: "@Chan", messageId: 42 } },
 		);
-		expect(request.body.reply_to_message_id).toBe(42);
+		expect(request.body.reply_parameters).toEqual({ message_id: 42 });
+		expect(request.body.reply_to_message_id).toBeUndefined();
+	});
+
+	test("cross-chat reply sets reply_parameters.chat_id", () => {
+		const request = buildTelegramRequest(
+			{ message: "hello", footer: "", format: "md", app, wikilinkExternalLinkField: "link" },
+			{
+				botToken: "TOKEN",
+				operation: "send",
+				chatId: "-1001403600379",
+				replyTo: { chatId: "@kallection", messageId: 40308 },
+			},
+		);
+		expect(request.body.reply_parameters).toEqual({ message_id: 40308, chat_id: "@kallection" });
 	});
 
 	test("appends footer to converted text", () => {
