@@ -1,4 +1,4 @@
-import { App, Modal, Setting } from "obsidian";
+import { App, Modal, Setting, SettingGroup } from "obsidian";
 import { ExportOptions, RelatedSection } from "../types";
 
 export interface ModalParams {
@@ -112,14 +112,16 @@ export class ExportSettingsModal extends Modal {
 
 		this.registerKeyboardHandlers();
 
-		new Setting(contentEl).setName("Format").addDropdown((dd) =>
-			dd
-				.addOption("html", "Classic")
-				.addOption("md", "Rich text")
-				.setValue(this.options.format)
-				.onChange((v) => {
-					this.options.format = v as "html" | "md";
-				}),
+		new SettingGroup(contentEl).addSetting((s) =>
+			s.setName("Format").addDropdown((dd) =>
+				dd
+					.addOption("html", "Classic")
+					.addOption("md", "Rich text")
+					.setValue(this.options.format)
+					.onChange((v) => {
+						this.options.format = v as "html" | "md";
+					}),
+			),
 		);
 
 		this.renderSection(
@@ -140,40 +142,46 @@ export class ExportSettingsModal extends Modal {
 			this.options.authorRelated,
 		);
 
-		if (finalHashtag) {
-			new Setting(contentEl)
-				.setName(finalHashtag)
-				.setDesc("Include hashtag at the end")
-				.addToggle((t) =>
-					t
-						.setValue(this.options.includeHashtag)
-						.onChange((v) => {
-							this.options.includeHashtag = v;
-						}),
-				)
-				.settingEl.addClass("md-export-hashtag");
-		}
+		if (finalHashtag || showReplyLink) {
+			const extras = new SettingGroup(contentEl);
 
-		if (showReplyLink) {
-			new Setting(contentEl)
-				.setName("Reply to post")
-				.setDesc("Telegram post link to reply to (optional)")
-				.addText((t) => {
-					t.setPlaceholder("https://t.me/…")
-						.setValue(this.options.replyLink)
-						.onChange((v) => {
-							this.options.replyLink = v;
-						});
-					// iOS pushes the modal (and this field, near the bottom) behind the
-					// keyboard on focus without scrolling it back into view on its own.
-					t.inputEl.addEventListener("focus", () => {
-						setTimeout(
-							() => t.inputEl.scrollIntoView({ block: "center", behavior: "smooth" }),
-							300,
-						);
-					});
-				})
-				.settingEl.addClass("md-export-hashtag");
+			if (finalHashtag) {
+				extras.addSetting((s) =>
+					s
+						.setName(finalHashtag)
+						.setDesc("Include hashtag at the end")
+						.addToggle((t) =>
+							t
+								.setValue(this.options.includeHashtag)
+								.onChange((v) => {
+									this.options.includeHashtag = v;
+								}),
+						),
+				);
+			}
+
+			if (showReplyLink) {
+				extras.addSetting((s) =>
+					s
+						.setName("Reply to post")
+						.setDesc("Telegram post link to reply to (optional)")
+						.addText((t) => {
+							t.setPlaceholder("https://t.me/…")
+								.setValue(this.options.replyLink)
+								.onChange((v) => {
+									this.options.replyLink = v;
+								});
+							// iOS pushes the modal (and this field, near the bottom) behind the
+							// keyboard on focus without scrolling it back into view on its own.
+							t.inputEl.addEventListener("focus", () => {
+								setTimeout(
+									() => t.inputEl.scrollIntoView({ block: "center", behavior: "smooth" }),
+									300,
+								);
+							});
+						}),
+				);
+			}
 		}
 
 		new Setting(contentEl)
@@ -197,26 +205,29 @@ export class ExportSettingsModal extends Modal {
 	) {
 		if (section.items.length === 0) return;
 
-		let itemsEl!: HTMLElement;
+		const group = new SettingGroup(containerEl).setHeading(label);
+		const itemEls: HTMLElement[] = [];
 
-		new Setting(containerEl)
-			.setName(label)
-			.setHeading()
-			.addToggle((t) =>
+		group.addSetting((s) =>
+			s.setName("Додати секцію").addToggle((t) =>
 				t.setValue(section.enabled).onChange((v) => {
 					section.enabled = v;
-					itemsEl.style.display = v ? "" : "none";
+					for (const el of itemEls) el.toggle(v);
 				}),
-			);
-
-		itemsEl = containerEl.createDiv({ cls: "md-export-section-items" });
+			),
+		);
 
 		for (const item of section.items) {
-			new Setting(itemsEl).setName(item.name).addToggle((t) =>
-				t.setValue(item.enabled).onChange((v) => {
-					item.enabled = v;
-				}),
-			);
+			group.addSetting((s) => {
+				s.setName(item.name).addToggle((t) =>
+					t.setValue(item.enabled).onChange((v) => {
+						item.enabled = v;
+					}),
+				);
+				s.settingEl.addClass("md-export-related-item");
+				s.settingEl.toggle(section.enabled);
+				itemEls.push(s.settingEl);
+			});
 		}
 	}
 
