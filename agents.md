@@ -99,4 +99,4 @@ A URL already shown in an earlier section (manual → brand → type → taste) 
 | `publishedStatusValue` | Value written to `statusField` after publishing |
 | `finalHashtag` | Hashtag optionally appended at the end of the footer (default `#огляди`) |
 
-Settings UI lives in `src/settings/tab.class.ts`. The bot token is stored as a **secret key name** — the actual token is retrieved at send-time via `app.secretStorage.getSecret(settings.botToken)` (Obsidian 1.11+ secrets API).
+Settings UI lives in `src/settings/tab.class.ts` and uses the declarative settings API (Obsidian 1.13+): `getSettingDefinitions()` returns groups of `control` definitions keyed by `MyPluginSettings` fields; Obsidian renders them, indexes them for settings search, and reads/persists values via `this.plugin.settings` (no manual `onChange`/`saveSettings`). `minAppVersion` is `1.13.2` (needed for the `secret` control type). The bot token is stored as a **secret key name** — the actual token is retrieved at send-time via `app.secretStorage.getSecret(settings.botToken)` (Obsidian 1.11+ secrets API).
