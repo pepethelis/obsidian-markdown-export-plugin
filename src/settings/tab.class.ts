@@ -23,7 +23,7 @@ export class MdExportSettingTab extends PluginSettingTab {
 				new SecretComponent(this.app, el)
 					.setValue(this.plugin.settings.botToken)
 					.onChange((value) => {
-						this.plugin.settings.botToken = value;
+						this.plugin.settings.botToken = value ?? "";
 						this.plugin.saveSettings();
 					}),
 			);
