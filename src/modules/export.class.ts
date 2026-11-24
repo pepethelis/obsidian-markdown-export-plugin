@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, TFile } from "obsidian";
+import { MarkdownView, Notice, RequestUrlResponse, TFile, requestUrl } from "obsidian";
 import { buildFooterFromItems } from "../helpers/footerBuilder";
 import { resolveStoredFormat } from "../helpers/telegramFormat";
 import {
@@ -306,12 +306,16 @@ Message is too long: ~${tooLong} of ${TELEGRAM_TEXT_LIMIT} characters. ` +
 			return null;
 		}
 
-		let response: Response;
+		// requestUrl goes through Obsidian's native networking (no CORS limits on
+		// mobile); `throw: false` lets us read the error body for non-2xx answers.
+		let response: RequestUrlResponse;
 		try {
-			response = await fetch(request.url, {
+			response = await requestUrl({
+				url: request.url,
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				contentType: "application/json",
 				body: JSON.stringify(request.body),
+				throw: false,
 			});
 		} catch (e) {
 			console.error("Telegram request failed:", e);
@@ -320,8 +324,8 @@ Network error: ${e instanceof Error ? e.message : String(e)}`, 10000);
 			return null;
 		}
 
-		const bodyText = await response.text();
-		if (!response.ok) {
+		const bodyText = response.text;
+		if (response.status < 200 || response.status >= 300) {
 			console.error("Telegram API error:", bodyText);
 			new Notice(`${failTitle} ❌
 ${describeTelegramError(response.status, bodyText)}`, 10000);
