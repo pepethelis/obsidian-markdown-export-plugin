@@ -20,6 +20,7 @@ import {
 	ExportSettingsModal,
 	ModalParams,
 } from "../modals/export-settings.modal";
+import { confirmAction } from "../modals/confirm";
 import { ExportOptions } from "../types";
 import MyPlugin from "../plugin.class";
 
@@ -320,6 +321,14 @@ export class Export {
 			defaultFormat: storedFormat,
 		});
 		if (!options) return;
+
+		const confirmed = await confirmAction(app, {
+			title: "Update channel post?",
+			message: `The published post will be replaced with the current note text.\n${postLink}`,
+			confirmLabel: "Update post",
+			destructive: true,
+		});
+		if (!confirmed) return;
 
 		const footer = buildFooterFromItems(options, brandLabel, settings);
 		const ok = await this.execUpdate(postLink, page, footer, options.format, botToken);
