@@ -4,7 +4,6 @@ import { ExportOptions, RelatedSection } from "../types";
 export interface ModalParams {
 	title: string;
 	submitLabel: string;
-	showReplyLink: boolean;
 	finalHashtag: string;
 	brandLabel: string;
 	brandItems: RelatedSection["items"];
@@ -15,57 +14,11 @@ export interface ModalParams {
 	defaultFormat?: "html" | "md";
 }
 
-interface KeyboardPlugin {
-	addListener(
-		event: "keyboardWillShow" | "keyboardWillHide",
-		cb: (info?: { keyboardHeight: number }) => void,
-	): KeyboardListenerHandle | Promise<KeyboardListenerHandle>;
-}
-
-interface KeyboardListenerHandle {
-	remove(): void | Promise<void>;
-}
-
 export class ExportSettingsModal extends Modal {
 	private options: ExportOptions;
 	private params: ModalParams;
 	private submitted = false;
 	private resolve: (options: ExportOptions | null) => void;
-	private keyboardHandles: KeyboardListenerHandle[] = [];
-
-	// Obsidian mobile runs with Capacitor keyboard resize mode "none": the iOS
-	// keyboard overlays the webview without changing any viewport metrics (no
-	// visualViewport/resize events), so the modal keeps its full-screen layout
-	// and its bottom part ends up hidden behind the keyboard. The only reliable
-	// signal is the Capacitor Keyboard plugin, which reports keyboard height.
-	private setKeyboardOffset(height: number) {
-		this.modalEl.style.marginBottom = height ? `${height}px` : "";
-		this.modalEl.style.maxHeight = height
-			? `calc(100% - ${height}px)`
-			: "";
-	}
-
-	private registerKeyboardHandlers() {
-		const keyboard = (
-			window as {
-				Capacitor?: { Plugins?: { Keyboard?: KeyboardPlugin } };
-			}
-		).Capacitor?.Plugins?.Keyboard;
-		if (!keyboard) return;
-
-		const listen = (
-			event: "keyboardWillShow" | "keyboardWillHide",
-			cb: (info?: { keyboardHeight: number }) => void,
-		) => {
-			Promise.resolve(keyboard.addListener(event, cb)).then((handle) =>
-				this.keyboardHandles.push(handle),
-			);
-		};
-		listen("keyboardWillShow", (info) =>
-			this.setKeyboardOffset(info?.keyboardHeight ?? 0),
-		);
-		listen("keyboardWillHide", () => this.setKeyboardOffset(0));
-	}
 
 	constructor(
 		app: App,
@@ -78,7 +31,6 @@ export class ExportSettingsModal extends Modal {
 		this.options = {
 			format: params.defaultFormat ?? "html",
 			includeHashtag: true,
-			replyLink: "",
 			brandRelated: {
 				enabled: true,
 				items: params.brandItems.map((i) => ({ ...i })),
@@ -104,13 +56,10 @@ export class ExportSettingsModal extends Modal {
 
 	onOpen() {
 		const { contentEl } = this;
-		const { title, submitLabel, showReplyLink, finalHashtag, brandLabel } =
-			this.params;
+		const { title, submitLabel, finalHashtag, brandLabel } = this.params;
 
 		contentEl.addClass("md-export-modal");
 		contentEl.createEl("h2", { text: title });
-
-		this.registerKeyboardHandlers();
 
 		new SettingGroup(contentEl).addSetting((s) =>
 			s.setName("Format").addDropdown((dd) =>
@@ -142,46 +91,17 @@ export class ExportSettingsModal extends Modal {
 			this.options.authorRelated,
 		);
 
-		if (finalHashtag || showReplyLink) {
-			const extras = new SettingGroup(contentEl);
-
-			if (finalHashtag) {
-				extras.addSetting((s) =>
-					s
-						.setName(finalHashtag)
-						.setDesc("Include hashtag at the end")
-						.addToggle((t) =>
-							t
-								.setValue(this.options.includeHashtag)
-								.onChange((v) => {
-									this.options.includeHashtag = v;
-								}),
-						),
-				);
-			}
-
-			if (showReplyLink) {
-				extras.addSetting((s) =>
-					s
-						.setName("Reply to post")
-						.setDesc("Telegram post link to reply to (optional)")
-						.addText((t) => {
-							t.setPlaceholder("https://t.me/…")
-								.setValue(this.options.replyLink)
-								.onChange((v) => {
-									this.options.replyLink = v;
-								});
-							// iOS pushes the modal (and this field, near the bottom) behind the
-							// keyboard on focus without scrolling it back into view on its own.
-							t.inputEl.addEventListener("focus", () => {
-								setTimeout(
-									() => t.inputEl.scrollIntoView({ block: "center", behavior: "smooth" }),
-									300,
-								);
-							});
+		if (finalHashtag) {
+			new SettingGroup(contentEl).addSetting((s) =>
+				s
+					.setName(finalHashtag)
+					.setDesc("Include hashtag at the end")
+					.addToggle((t) =>
+						t.setValue(this.options.includeHashtag).onChange((v) => {
+							this.options.includeHashtag = v;
 						}),
-				);
-			}
+					),
+			);
 		}
 
 		new Setting(contentEl)
@@ -232,11 +152,6 @@ export class ExportSettingsModal extends Modal {
 	}
 
 	onClose() {
-		for (const handle of this.keyboardHandles) {
-			handle.remove();
-		}
-		this.keyboardHandles = [];
-		this.setKeyboardOffset(0);
 		if (!this.submitted) {
 			this.resolve(null);
 		}

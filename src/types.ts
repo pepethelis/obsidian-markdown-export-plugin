@@ -31,5 +31,4 @@ export interface ExportOptions {
 	authorRelated: RelatedSection;
 	manualRelated: RelatedSection;
 	typeRelated: RelatedSection;
-	replyLink: string;
 }

@@ -21,6 +21,7 @@ import {
 	ModalParams,
 } from "../modals/export-settings.modal";
 import { confirmAction } from "../modals/confirm";
+import { promptReplyMessageId } from "../modals/reply-link.modal";
 import { ExportOptions } from "../types";
 import MyPlugin from "../plugin.class";
 
@@ -76,6 +77,12 @@ export class Export {
 		});
 
 		plugin.addCommand({
+			id: "post-to-channel-as-reply",
+			name: "Post to channel as reply",
+			editorCallback: () => this.runChannelReply(),
+		});
+
+		plugin.addCommand({
 			id: "update-post",
 			name: "Update post",
 			// Only offered for notes that were already posted to the channel.
@@ -96,6 +103,12 @@ export class Export {
 				);
 				menu.addItem((item) =>
 					item.setTitle("Post to channel").setIcon("arrow-up-right").onClick(() => this.runChannel()),
+				);
+				menu.addItem((item) =>
+					item
+						.setTitle("Post to channel as reply")
+						.setIcon("reply")
+						.onClick(() => this.runChannelReply()),
 				);
 				if (this.hasPostLink(file)) {
 					menu.addItem((item) =>
@@ -174,7 +187,6 @@ export class Export {
 		const options = await this.openModal({
 			title: "Export page",
 			submitLabel: "Export",
-			showReplyLink: false,
 			finalHashtag: settings.finalHashtag,
 			brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems,
 		});
@@ -205,7 +217,6 @@ export class Export {
 		const options = await this.openModal({
 			title: "Export selection",
 			submitLabel: "Export",
-			showReplyLink: false,
 			finalHashtag: settings.finalHashtag,
 			brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems,
 		});
@@ -215,7 +226,13 @@ export class Export {
 		await this.exec(selectedText, footer, options.format, botToken);
 	}
 
-	private async runChannel() {
+	private async runChannelReply() {
+		const replyToMessageId = await promptReplyMessageId(this.plugin.app);
+		if (replyToMessageId === null) return;
+		await this.runChannel(replyToMessageId);
+	}
+
+	private async runChannel(replyToMessageId?: number) {
 		const activeView =
 			this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!activeView) return;
@@ -240,14 +257,13 @@ export class Export {
 		const options = await this.openModal({
 			title: "Post to channel",
 			submitLabel: "Post",
-			showReplyLink: true,
 			finalHashtag: settings.finalHashtag,
 			brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems,
 		});
 		if (!options) return;
 
 		const footer = buildFooterFromItems(options, brandLabel, settings);
-		const postUrl = await this.execChannel(page, footer, options.format, options.replyLink, botToken);
+		const postUrl = await this.execChannel(page, footer, options.format, replyToMessageId, botToken);
 		if (!postUrl) return;
 
 		if (settings.externalLinkField) {
@@ -315,7 +331,6 @@ export class Export {
 		const options = await this.openModal({
 			title: "Update post",
 			submitLabel: "Update",
-			showReplyLink: false,
 			finalHashtag: settings.finalHashtag,
 			brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems,
 			defaultFormat: storedFormat,
@@ -408,23 +423,11 @@ ${describeTelegramError(response.status, bodyText)}`, 10000);
 		message: string,
 		footer: string,
 		format: "html" | "md",
-		replyLink: string,
+		replyToMessageId: number | undefined,
 		botToken: string,
 	): Promise<string | null> {
 		const { channelUsername, externalLinkField } = this.plugin.settings;
 		const app = this.plugin.app;
-
-		let replyToMessageId: number | undefined;
-		if (replyLink.trim()) {
-			const match = replyLink.match(
-				/https?:\/\/t\.me\/(?:c\/\d+\/|[^/]+\/)(\d+)/,
-			);
-			if (match) {
-				replyToMessageId = parseInt(match[1], 10);
-			} else {
-				new Notice("Provided reply link was invalid, ignoring it.");
-			}
-		}
 
 		const chatId =
 			channelUsername.startsWith("@") || channelUsername.startsWith("-100")

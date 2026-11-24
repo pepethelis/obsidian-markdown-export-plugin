@@ -24,3 +24,14 @@ If your plugin does not need CSS, delete this file.
 	margin-top: 1em;
 	border-top: none;
 }
+
+/* Reply link prompt */
+.md-export-reply-input {
+	width: 100%;
+}
+
+.md-export-reply-error {
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+	margin-top: 0.5em;
+}

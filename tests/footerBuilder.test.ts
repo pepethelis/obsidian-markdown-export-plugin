@@ -20,7 +20,6 @@ function makeOptions(overrides: Partial<ExportOptions> = {}): ExportOptions {
 	return {
 		format: "html",
 		includeHashtag: false,
-		replyLink: "",
 		brandRelated: noSection,
 		typeRelated: noSection,
 		tasteRelated: noSection,

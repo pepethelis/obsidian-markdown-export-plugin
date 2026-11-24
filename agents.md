@@ -24,10 +24,13 @@ On `onload`, the plugin instantiates a single `Export` class (`modules/export.cl
 |---|---|---|
 | Export full page | `send` | Sends the active note (minus frontmatter) to the private chat (`chatId`) |
 | Export selection | `scissors` | Sends the current selection to the private chat |
-| Post to channel | `arrow-up-right` | Sends to the channel (`channelUsername`), optionally as a reply to another post, then writes post URL + pub date + status back to the note's frontmatter |
-| Update post | `pencil-line` | Edits an existing channel post using the URL stored in the note's frontmatter; writes update date to frontmatter |
+| Post to channel | `arrow-up-right` | Sends to the channel (`channelUsername`), then writes post URL + pub date + status back to the note's frontmatter |
+| Post to channel as reply | — | Asks for a post link first (`modals/reply-link.modal.ts`, a `ConfirmationModal` with a single input, validated by `helpers/telegramLinks.ts`), then runs "Post to channel" with `replyToMessageId` |
+| Update post | `pencil-line` | Edits an existing channel post using the URL stored in the note's frontmatter, after a destructive confirmation (`modals/confirm.ts`); writes update date to frontmatter. The command is only offered (`editorCheckCallback`) when the note has a post link |
 
-Every command opens an `ExportSettingsModal` (`modals/export-settings.modal.ts`) before sending, where the user picks the format (Classic/HTML vs Rich text/Markdown), toggles which related-notes sections and hashtag to include, and — for "Post to channel" — optionally supplies a reply link. **All four commands append the footer built from the modal's selections, including "Export selection"** — there is no footer-less send path.
+The same actions are also added to the note's file menu (`file-menu`, the "⋯" menu on mobile) for the active note, and "Export selection" to the editor context menu (`editor-menu`) when text is selected.
+
+Every command opens an `ExportSettingsModal` (`modals/export-settings.modal.ts`) before sending, where the user picks the format (Classic/HTML vs Rich text/Markdown) and toggles which related-notes sections and hashtag to include. The modal is built from `SettingGroup`s and intentionally has **no text inputs**, so the mobile keyboard never covers it (the reply link is asked for in a separate prompt). **All commands append the footer built from the modal's selections, including "Export selection"** — there is no footer-less send path.
 
 Because the settings modal is shown before sending, the message text (`editor.getValue()`/`getSelection()`) is captured *before* the modal opens and used as-is once submitted; Obsidian's modal overlay traps focus/pointer-events so the underlying editor isn't reachable while it's open, so this isn't normally an editable window.
 
@@ -47,7 +50,9 @@ convertWikilinks → convertLineBreaks → insertDividers → escapeHtmlForTeleg
 - `insertDividers`: replaces `\n{2,}` with `\n\n---\n\n` (section divider) and single `\n` with `\n\n` (paragraph break). Needed because Telegram Markdown collapses single newlines to spaces.
 - Does **not** run `tokenizeMethods` (no Markdown→HTML tag conversion).
 
-**`telegramRequest.ts`** (`buildTelegramRequest`) — pure helper shared by `Export`'s `exec`/`execChannel`/`execUpdate`. Given the message/footer/format and a `{operation: "send" | "edit", chatId, messageId?, replyToMessageId?}`, it runs the right converter and returns `{url, body}` for the matching Telegram endpoint (`sendMessage`/`sendRichMessage`/`editMessageText`/`editRichMessage`). `disable_web_page_preview` is set on every request except `editRichMessage` (legacy behavior, preserved intentionally).
+**`telegramRequest.ts`** (`buildTelegramRequest`) — pure helper shared by `Export`'s `exec`/`execChannel`/`execUpdate`. Given the message/footer/format and a `{operation: "send" | "edit", chatId, messageId?, replyToMessageId?}`, it runs the right converter and returns `{url, body}` for the matching Telegram endpoint (`sendMessage`/`sendRichMessage`/`editMessageText`/`editRichMessage`). `disable_web_page_preview` is set on every request except `editRichMessage` (legacy behavior, preserved intentionally). It also exports `textOverLimit`, which blocks HTML-mode messages whose visible text (tags stripped, entities counted as one char) exceeds `TELEGRAM_TEXT_LIMIT` (4096); rich messages are not checked.
+
+All network calls go through `Export#send`, which uses Obsidian's `requestUrl` (not `fetch`) with `throw: false`, runs the length check, and on failure shows a Notice with Telegram's `description` (parsed by `helpers/telegramError.ts`).
 
 **`telegramFormat.ts`** (`resolveStoredFormat`) — narrows the `telegram_format` frontmatter value to `"html" | "md" | undefined`. Posts published before this field existed resolve to `undefined`; "Update post" shows a warning Notice in that case since the modal has to guess a default (Classic/HTML) that may not match how the post was originally sent.
 
