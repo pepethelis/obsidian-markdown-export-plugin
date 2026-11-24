@@ -77,8 +77,56 @@ export class Export {
 		plugin.addCommand({
 			id: "update-post",
 			name: "Update post",
-			editorCallback: () => this.runUpdate(),
+			// Only offered for notes that were already posted to the channel.
+			editorCheckCallback: (checking, _editor, ctx) => {
+				if (!ctx.file || !this.hasPostLink(ctx.file)) return false;
+				if (!checking) this.runUpdate();
+				return true;
+			},
 		});
+
+		// Note "⋯" menu (the main entry point on mobile) and the file explorer menu.
+		plugin.registerEvent(
+			plugin.app.workspace.on("file-menu", (menu, file) => {
+				if (!(file instanceof TFile) || file !== this.activeFile()) return;
+				menu.addSeparator();
+				menu.addItem((item) =>
+					item.setTitle("Export to Telegram").setIcon("send").onClick(() => this.runFullPage()),
+				);
+				menu.addItem((item) =>
+					item.setTitle("Post to channel").setIcon("arrow-up-right").onClick(() => this.runChannel()),
+				);
+				if (this.hasPostLink(file)) {
+					menu.addItem((item) =>
+						item.setTitle("Update channel post").setIcon("pencil-line").onClick(() => this.runUpdate()),
+					);
+				}
+			}),
+		);
+
+		// Editor context menu: offer exporting the current selection.
+		plugin.registerEvent(
+			plugin.app.workspace.on("editor-menu", (menu, editor) => {
+				if (!editor.somethingSelected()) return;
+				menu.addItem((item) =>
+					item
+						.setTitle("Export selection to Telegram")
+						.setIcon("scissors")
+						.onClick(() => this.runSelection()),
+				);
+			}),
+		);
+	}
+
+	private activeFile(): TFile | null {
+		return this.plugin.app.workspace.getActiveViewOfType(MarkdownView)?.file ?? null;
+	}
+
+	private hasPostLink(file: TFile): boolean {
+		const field = this.plugin.settings.externalLinkField;
+		if (!field) return false;
+		const link = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter?.[field];
+		return typeof link === "string" && link.length > 0;
 	}
 
 	// ── helpers ────────────────────────────────────────────────────────────
