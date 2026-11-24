@@ -1,4 +1,5 @@
-import { App, PluginSettingTab, SettingDefinitionItem } from "obsidian";
+import { App, PluginSettingTab, SettingDefinitionItem, SettingDefinitionList } from "obsidian";
+import { editChannel } from "../modals/channel.modal";
 import TelegramExportPlugin from "../plugin.class";
 import { TelegramExportSettings } from "../types";
 
@@ -11,6 +12,60 @@ export class MdExportSettingTab extends PluginSettingTab {
 		super(app, plugin);
 		this.plugin = plugin;
 		this.icon = "message-square-share";
+	}
+
+	/**
+	 * Channels for "Post to channel". The first one is the default in the export
+	 * modal; drag to reorder. Structural changes are persisted and then the tab
+	 * is rebuilt with `update()`.
+	 */
+	private channelList(): SettingDefinitionList<SettingKey> {
+		const { settings } = this.plugin;
+		const commit = async () => {
+			await this.plugin.saveSettings();
+			this.update();
+		};
+
+		return {
+			type: "list",
+			heading: "Channels",
+			emptyState: "No channels yet. Add one to use “Post to channel”.",
+			addItem: {
+				name: "Add channel",
+				action: async () => {
+					const channel = await editChannel(this.app, null);
+					if (!channel) return;
+					settings.channels.push(channel);
+					await commit();
+				},
+			},
+			onDelete: async (index) => {
+				settings.channels.splice(index, 1);
+				await commit();
+			},
+			onReorder: async (oldIndex, newIndex) => {
+				const [moved] = settings.channels.splice(oldIndex, 1);
+				if (moved) settings.channels.splice(newIndex, 0, moved);
+				await commit();
+			},
+			items: settings.channels.map((channel, index) => ({
+				name: channel.name,
+				desc: [
+					channel.username,
+					index === 0 ? "default" : "",
+					channel.updateNote ? "" : "doesn't update note",
+				]
+					.filter(Boolean)
+					.join(" · "),
+				aliases: ["channel"],
+				action: async () => {
+					const updated = await editChannel(this.app, channel);
+					if (!updated) return;
+					settings.channels[index] = updated;
+					await commit();
+				},
+			})),
+		};
 	}
 
 	getSettingDefinitions(): SettingDefinitionItem<SettingKey>[] {
@@ -38,21 +93,9 @@ export class MdExportSettingTab extends PluginSettingTab {
 									: "Chat ID must be a number",
 						},
 					},
-					{
-						name: "Channel Username",
-						desc: "Channel username to send messages to",
-						control: {
-							type: "text",
-							key: "channelUsername",
-							placeholder: "e.g. '@channel_name' or '-100123456789'",
-							validate: (value) =>
-								value === "" || /^(@\w{5,}|-100\d+)$/.test(value.trim())
-									? undefined
-									: "Use '@channel_name' or a numeric ID starting with -100",
-						},
-					},
 				],
 			},
+			this.channelList(),
 			{
 				type: "group",
 				heading: "Frontmatter fields",

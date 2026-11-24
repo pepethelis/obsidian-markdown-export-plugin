@@ -24,7 +24,7 @@ On `onload`, the plugin instantiates a single `Export` class (`modules/export.cl
 |---|---|---|
 | Export full page | `send` | Sends the active note (minus frontmatter) to the private chat (`chatId`) |
 | Export selection | `scissors` | Sends the current selection to the private chat |
-| Post to channel | `arrow-up-right` | Sends to the channel (`channelUsername`), then writes post URL + pub date + status back to the note's frontmatter |
+| Post to channel | `arrow-up-right` | Sends to a channel picked in the modal (from `settings.channels`, first one preselected), then — if that channel has `updateNote` on — writes post URL + pub date + status + format back to the note's frontmatter |
 | Post to channel as reply | — | Asks for a post link first (`modals/reply-link.modal.ts`, a `ConfirmationModal` with a single input, validated by `helpers/telegramLinks.ts`), then runs "Post to channel" with `replyToMessageId` |
 | Update post | `pencil-line` | Edits an existing channel post using the URL stored in the note's frontmatter, after a destructive confirmation (`modals/confirm.ts`); writes update date to frontmatter. The command is only offered (`editorCheckCallback`) when the note has a post link |
 
@@ -96,7 +96,7 @@ A URL already shown in an earlier section (manual → brand → type → taste) 
 |---|---|
 | `botToken` | Key name for secret storage lookup (not the token itself) |
 | `chatId` | Private chat/group ID for "Export full page"/"Export selection" |
-| `channelUsername` | Channel username or `-100...` ID for "Post to channel"/"Update post" |
+| `channels` | List of `{ name, username, updateNote }` for "Post to channel". Edited in settings as a declarative `type: "list"` (add / edit via `modals/channel.modal.ts`, delete, drag to reorder); the first one is the default. `updateNote: false` is meant for test channels so they don't overwrite the real post link. The old single `channelUsername` (≤ 0.12) is migrated into this list in `loadSettings`. "Update post" doesn't use this list — it targets the chat parsed from the stored post link |
 | `externalLinkField` | Frontmatter field holding the published Telegram post URL |
 | `pubDateField` | Frontmatter field written with `YYYY-MM-DD` on first publish |
 | `updateDateField` | Frontmatter field written with `YYYY-MM-DD` on update |

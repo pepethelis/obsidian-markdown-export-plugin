@@ -1,5 +1,5 @@
 import { App, Modal, Setting, SettingGroup } from "obsidian";
-import { ExportOptions, RelatedSection } from "../types";
+import { Channel, ExportOptions, RelatedSection } from "../types";
 
 export interface ModalParams {
 	title: string;
@@ -12,6 +12,8 @@ export interface ModalParams {
 	authorItems: RelatedSection["items"];
 	manualItems: RelatedSection["items"];
 	defaultFormat?: "html" | "md";
+	/** When set, a channel picker is shown (first channel preselected). */
+	channels?: Channel[];
 }
 
 export class ExportSettingsModal extends Modal {
@@ -30,6 +32,7 @@ export class ExportSettingsModal extends Modal {
 		this.resolve = resolve;
 		this.options = {
 			format: params.defaultFormat ?? "html",
+			channelIndex: params.channels?.length ? 0 : undefined,
 			includeHashtag: true,
 			brandRelated: {
 				enabled: true,
@@ -61,7 +64,19 @@ export class ExportSettingsModal extends Modal {
 		contentEl.addClass("md-export-modal");
 		contentEl.createEl("h2", { text: title });
 
-		new SettingGroup(contentEl).addSetting((s) =>
+		const general = new SettingGroup(contentEl);
+		const { channels } = this.params;
+		if (channels?.length) {
+			general.addSetting((s) =>
+				s.setName("Channel").addDropdown((dd) => {
+					channels.forEach((c, i) => dd.addOption(String(i), `${c.name} (${c.username})`));
+					dd.setValue(String(this.options.channelIndex ?? 0)).onChange((v) => {
+						this.options.channelIndex = Number(v);
+					});
+				}),
+			);
+		}
+		general.addSetting((s) =>
 			s.setName("Format").addDropdown((dd) =>
 				dd
 					.addOption("html", "Classic")

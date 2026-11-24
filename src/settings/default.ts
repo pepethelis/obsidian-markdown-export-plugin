@@ -8,6 +8,6 @@ export const DEFAULT_SETTINGS: TelegramExportSettings = {
 	updateDateField: "",
 	statusField: "",
 	publishedStatusValue: "",
-	channelUsername: "",
+	channels: [],
 	finalHashtag: "#огляди",
 };

@@ -59,7 +59,7 @@ const settings: TelegramExportSettings = {
 	updateDateField: "",
 	statusField: "",
 	publishedStatusValue: "",
-	channelUsername: "",
+	channels: [],
 	finalHashtag: "",
 };
 

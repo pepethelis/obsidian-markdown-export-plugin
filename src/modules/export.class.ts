@@ -8,6 +8,7 @@ import {
 	textOverLimit,
 } from "../helpers/telegramRequest";
 import { describeTelegramError } from "../helpers/telegramError";
+import { channelChatId, channelPostUrl } from "../helpers/telegramLinks";
 import {
 	computeBrandRelated,
 	computeTasteRelated,
@@ -22,7 +23,7 @@ import {
 } from "../modals/export-settings.modal";
 import { confirmAction } from "../modals/confirm";
 import { promptReplyMessageId } from "../modals/reply-link.modal";
-import { ExportOptions } from "../types";
+import { Channel, ExportOptions } from "../types";
 import TelegramExportPlugin from "../plugin.class";
 
 interface TelegramResponse {
@@ -231,8 +232,8 @@ export class Export {
 		if (!file) return;
 
 		const botToken = await app.secretStorage.getSecret(settings.botToken);
-		if (!botToken || !settings.channelUsername) {
-			new Notice("Please set bot token and channel username in settings.");
+		if (!botToken || settings.channels.length === 0) {
+			new Notice("Please set bot token and add a channel in settings.");
 			return;
 		}
 
@@ -243,13 +244,20 @@ export class Export {
 			title: "Post to channel",
 			submitLabel: "Post",
 			finalHashtag: settings.finalHashtag,
+			channels: settings.channels,
 			brandLabel, brandItems, typeItems, tasteItems, authorItems, manualItems,
 		});
 		if (!options) return;
 
+		const channel = settings.channels[options.channelIndex ?? 0];
+		if (!channel) return;
+
 		const footer = buildFooterFromItems(options, brandLabel, settings);
-		const postUrl = await this.execChannel(page, footer, options.format, replyToMessageId, botToken);
+		const postUrl = await this.execChannel(
+			channel, page, footer, options.format, replyToMessageId, botToken,
+		);
 		if (!postUrl) return;
+		if (!channel.updateNote) return;
 
 		if (settings.externalLinkField) {
 			await app.fileManager.processFrontMatter(file, (fm) => {
@@ -405,19 +413,16 @@ ${describeTelegramError(response.status, bodyText)}`, 10000);
 	}
 
 	private async execChannel(
+		channel: Channel,
 		message: string,
 		footer: string,
 		format: "html" | "md",
 		replyToMessageId: number | undefined,
 		botToken: string,
 	): Promise<string | null> {
-		const { channelUsername, externalLinkField } = this.plugin.settings;
+		const { externalLinkField } = this.plugin.settings;
 		const app = this.plugin.app;
-
-		const chatId =
-			channelUsername.startsWith("@") || channelUsername.startsWith("-100")
-				? channelUsername
-				: `@${channelUsername}`;
+		const chatId = channelChatId(channel.username);
 
 		const request = buildTelegramRequest(
 			{ message, footer, format, app, wikilinkExternalLinkField: externalLinkField },
@@ -426,15 +431,8 @@ ${describeTelegramError(response.status, bodyText)}`, 10000);
 		const json = await this.send(request, "Failed to post to channel");
 		if (!json) return null;
 
-		new Notice("Posted to channel ✅");
-		const messageId = json.result?.message_id;
-		if (channelUsername.startsWith("-100")) {
-			return `https://t.me/c/${channelUsername.substring(4)}/${messageId}`;
-		}
-		const uname = channelUsername.startsWith("@")
-			? channelUsername.substring(1)
-			: channelUsername;
-		return `https://t.me/${uname}/${messageId}`;
+		new Notice(`Posted to ${channel.name} ✅`);
+		return channelPostUrl(channel.username, json.result?.message_id);
 	}
 
 	private async execUpdate(
