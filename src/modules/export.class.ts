@@ -2,6 +2,7 @@ import { MarkdownView, Notice, TFile } from "obsidian";
 import { buildFooterFromItems } from "../helpers/footerBuilder";
 import { resolveStoredFormat } from "../helpers/telegramFormat";
 import { buildTelegramRequest, TelegramRequest } from "../helpers/telegramRequest";
+import { describeTelegramError } from "../helpers/telegramError";
 import {
 	computeBrandRelated,
 	computeTasteRelated,
@@ -284,6 +285,13 @@ export class Export {
 		});
 	}
 
+	private async reportFailure(title: string, response: Response) {
+		const bodyText = await response.text();
+		console.error("Telegram API error:", bodyText);
+		const reason = describeTelegramError(response.status, bodyText);
+		new Notice(`${title} ❌\n${reason}`, 10000);
+	}
+
 	private async exec(message: string, footer: string, format: "html" | "md", botToken: string) {
 		const { chatId, externalLinkField } = this.plugin.settings;
 		const app = this.plugin.app;
@@ -297,8 +305,7 @@ export class Export {
 		if (response.ok) {
 			new Notice("Message sent to Telegram ✅");
 		} else {
-			console.error("Telegram API error:", await response.text());
-			new Notice("Failed to send message ❌");
+			await this.reportFailure("Failed to send message", response);
 		}
 	}
 
@@ -347,8 +354,7 @@ export class Export {
 			return `https://t.me/${uname}/${json.result.message_id}`;
 		}
 
-		console.error("Telegram API error:", await response.text());
-		new Notice("Failed to post to channel ❌");
+		await this.reportFailure("Failed to post to channel", response);
 		return null;
 	}
 
@@ -388,8 +394,7 @@ export class Export {
 			return true;
 		}
 
-		console.error("Telegram API error:", await response.text());
-		new Notice("Failed to update post ❌");
+		await this.reportFailure("Failed to update post", response);
 		return false;
 	}
 }
